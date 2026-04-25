@@ -23,6 +23,7 @@ function App() {
   const [history, setHistory] = useState([]);
   const [studyFileName, setStudyFileName] = useState('');
   const [conceptSourceLabel, setConceptSourceLabel] = useState('None yet');
+  const [showChatbox, setShowChatbox] = useState(true);
 
   const currentConcept = useMemo(() => concepts[conceptIndex], [conceptIndex]);
 
@@ -72,6 +73,7 @@ function App() {
   };
 
   const handleStartSession = () => {
+    setShowChatbox(false);
     transitionTo('concept-selection');
   };
 
@@ -125,11 +127,12 @@ function App() {
     setStudyFileName('');
     setConceptSourceLabel('None yet');
     setConcepts(defaultConcepts);
+    setShowChatbox(true);
   };
 
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center p-4 sm:p-8">
-      <div className="grid w-full gap-4 lg:grid-cols-[1.35fr_1fr] lg:gap-6">
+      <div className={`grid w-full gap-4 ${showChatbox ? 'lg:grid-cols-[1.35fr_1fr] lg:gap-6' : ''}`}>
         <section className="w-full rounded-3xl border border-white/70 bg-[var(--panel)] p-6 shadow-2xl backdrop-blur-md sm:p-10">
           <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
             <button
@@ -195,7 +198,7 @@ function App() {
 
         </section>
 
-        <ChatboxPanel onGenerateConceptsFromChat={handleGenerateConceptsFromChat} />
+        {showChatbox && <ChatboxPanel onGenerateConceptsFromChat={handleGenerateConceptsFromChat} />}
       </div>
     </main>
   );
