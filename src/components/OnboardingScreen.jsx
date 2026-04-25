@@ -13,10 +13,9 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
   };
 
   return (
-    <div className="flex flex-col items-center gap-8 text-center">
-      <h1 className="text-balance text-6xl font-bold leading-tight sm:text-8xl">EchoBrain</h1>
-
-      <h2 className="text-balance text-xl font-semibold leading-tight">You for sure you know it?</h2>
+    <>
+      <div className="flex flex-col items-center gap-8 text-center">
+        <h2 className="text-balance text-4xl font-bold leading-tight sm:text-4xl">You sure you understand it?</h2>
 
       <p className="max-w-xl text-base leading-relaxed text-[var(--text-soft)]">
         Upload study material or use the AI chatbox to generate concepts.
@@ -41,14 +40,15 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
         </p>
       </button>
 
-      <button
-        type="button"
-        onClick={onGenerateFromMaterial}
-        className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-4 text-xl font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-      >
-        Generate Concepts
-      </button>
-    </div>
+        <button
+          type="button"
+          onClick={onGenerateFromMaterial}
+          className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-4 text-xl font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+        >
+          Generate Concepts
+        </button>
+      </div>
+    </>
   );
 }
 
