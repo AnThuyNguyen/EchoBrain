@@ -14,7 +14,7 @@ function ConceptScreen({ concept, onTest, onSkip }) {
         onClick={onTest}
         className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-5 text-2xl font-semibold text-white transition hover:scale-[1.01] hover:bg-[var(--accent-strong)] focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200"
       >
-        Test
+        Start Test
       </button>
 
       <button

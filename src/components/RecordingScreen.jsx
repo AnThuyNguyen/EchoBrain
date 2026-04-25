@@ -1,16 +1,29 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 function RecordingScreen({ concept, onComplete }) {
-  const [isRecording, setIsRecording] = useState(false);
+  const [timeLeft, setTimeLeft] = useState(60);
 
-  const handleMicClick = () => {
-    if (!isRecording) {
-      setIsRecording(true);
+  useEffect(() => {
+    setTimeLeft(60);
+  }, []);
+
+  useEffect(() => {
+    if (timeLeft <= 0) {
+      onComplete('User explanation here');
       return;
     }
 
-    setIsRecording(false);
-    onComplete('User explanation here');
+    const timerId = window.setTimeout(() => {
+      setTimeLeft((prev) => prev - 1);
+    }, 1000);
+
+    return () => window.clearTimeout(timerId);
+  }, [timeLeft, onComplete]);
+
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
   return (
@@ -21,23 +34,21 @@ function RecordingScreen({ concept, onComplete }) {
 
       <h2 className="text-balance text-2xl font-semibold sm:text-3xl">{concept}</h2>
 
-      <button
-        type="button"
-        onClick={handleMicClick}
-        className={`flex h-40 w-40 items-center justify-center rounded-full text-5xl font-bold text-white shadow-lg transition focus-visible:outline-none focus-visible:ring-4 ${
-          isRecording
-            ? 'animate-pulse bg-[var(--warn)] focus-visible:ring-orange-200'
-            : 'bg-[var(--accent)] hover:scale-105 focus-visible:ring-teal-200'
-        }`}
-        aria-pressed={isRecording}
-        aria-label={isRecording ? 'Stop recording' : 'Start recording'}
-      >
-        {isRecording ? 'Stop' : 'Mic'}
-      </button>
+      <div className="flex h-44 w-44 items-center justify-center rounded-full border-8 border-[var(--warn)]/20 bg-[var(--warn)]/10 text-6xl font-extrabold text-[var(--warn)] shadow-inner animate-pulse">
+        {formatTime(timeLeft)}
+      </div>
 
       <p className="text-base text-[var(--text-soft)]">
-        {isRecording ? 'Recording... Tap to stop.' : 'Tap the mic to start recording.'}
+        Recording in progress... {formatTime(timeLeft)} remaining
       </p>
+
+      <button
+        type="button"
+        onClick={() => onComplete('User explanation here')}
+        className="rounded-xl bg-[var(--warn)] px-6 py-3 text-lg font-semibold text-white transition hover:brightness-95 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-orange-200"
+      >
+        Stop Record
+      </button>
     </div>
   );
 }

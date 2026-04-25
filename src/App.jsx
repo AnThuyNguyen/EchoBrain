@@ -34,7 +34,15 @@ function App() {
     setPhase(nextPhase);
   };
 
-  const canGoBack = history.length > 0;
+  const goBackMap = {
+    'concept-selection': 'onboarding',
+    'concept': 'concept-selection',
+    'countdown': 'concept-selection',
+    'recording': 'concept-selection',
+    'feedback': 'concept-selection',
+  };
+
+  const canGoBack = Object.keys(goBackMap).includes(phase);
 
   const goToNextConcept = () => {
     if (concepts.length === 0) {
@@ -67,9 +75,15 @@ function App() {
     transitionTo('countdown');
   };
 
-  const handleNextConcept = () => {
-    goToNextConcept();
+  const handleSelectConceptFromFeedback = (index) => {
+    setConceptIndex(index);
+    setTranscript('');
     transitionTo('concept');
+  };
+
+  const handleBackToConceptList = () => {
+    setTranscript('');
+    transitionTo('concept-selection');
   };
 
   const handleStartSession = () => {
@@ -105,18 +119,19 @@ function App() {
   };
 
   const handleGoBack = () => {
-    if (!canGoBack) {
-      return;
-    }
+    const goBackMap = {
+      'concept-selection': 'onboarding',
+      'concept': 'concept-selection',
+      'countdown': 'concept-selection',
+      'recording': 'concept-selection',
+      'feedback': 'concept-selection',
+    };
 
-    setHistory((prev) => {
-      const updated = [...prev];
-      const previousPhase = updated.pop();
-      if (previousPhase) {
-        setPhase(previousPhase);
-      }
-      return updated;
-    });
+    const nextPhase = goBackMap[phase];
+    if (nextPhase) {
+      setPhase(nextPhase);
+      setTranscript('');
+    }
   };
 
   const handleEndSession = () => {
@@ -192,7 +207,10 @@ function App() {
             concept={currentConcept}
             transcript={transcript}
             onAgain={handleAgain}
-            onNextConcept={handleNextConcept}
+            concepts={concepts}
+            currentConceptIndex={conceptIndex}
+            onSelectConcept={handleSelectConceptFromFeedback}
+            onBackToList={handleBackToConceptList}
           />
         )}
 
