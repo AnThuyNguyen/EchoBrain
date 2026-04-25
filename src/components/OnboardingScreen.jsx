@@ -15,8 +15,6 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
   return (
     <>
       <div className="flex flex-col items-center gap-8 text-center">
-        <h2 className="text-balance text-4xl font-bold leading-tight sm:text-4xl">You sure you understand it?</h2>
-
       <p className="max-w-xl text-base leading-relaxed text-[var(--text-soft)]">
         Upload study material or use the AI chatbox to generate concepts.
       </p>
