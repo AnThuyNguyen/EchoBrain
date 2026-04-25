@@ -17,7 +17,7 @@ function ConceptSelectionScreen({ concepts, sourceLabel, onChooseConcept }) {
             key={`${concept}-${index}`}
             type="button"
             onClick={() => onChooseConcept(index)}
-            className="rounded-2xl border border-white/70 bg-white/85 px-5 py-4 text-left text-base font-semibold text-[var(--text-main)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:bg-white"
+            className="rounded-2xl border border-gray-600 bg-[#2a2a2a] px-5 py-4 text-left text-base font-semibold text-[var(--text-main)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[#333]"
           >
             {concept}
           </button>

@@ -10,7 +10,7 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
 
         <h2 className="text-3xl font-bold">{concept}</h2>
 
-        <p className="rounded-xl border border-teal-100 bg-white/80 p-4 text-sm text-[var(--text-soft)]">
+        <p className="rounded-xl border border-gray-600 bg-[#2a2a2a] p-4 text-sm text-[var(--text-soft)]">
           Transcript: {transcript}
         </p>
 
@@ -23,7 +23,7 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
       <button
         type="button"
         onClick={onAgain}
-        className="rounded-xl border border-[var(--accent)] px-5 py-4 text-base font-semibold text-[var(--accent)] transition hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200"
+        className="rounded-xl border border-[var(--accent)] px-5 py-4 text-base font-semibold text-[var(--accent)] transition hover:bg-blue-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-400"
       >
         Try Again
       </button>
@@ -41,7 +41,7 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
                   key={`${otherConcept}-${idx}`}
                   type="button"
                   onClick={() => onSelectConcept(actualIndex)}
-                  className="rounded-xl border border-white/70 bg-white/85 px-4 py-3 text-left text-base font-semibold text-[var(--text-main)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)]/35 hover:bg-white"
+                  className="rounded-xl border border-gray-600 bg-[#2a2a2a] px-4 py-3 text-left text-base font-semibold text-[var(--text-main)] shadow-sm transition hover:-translate-y-0.5 hover:border-[var(--accent)] hover:bg-[#333]"
                 >
                   {otherConcept}
                 </button>
@@ -54,7 +54,7 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
       <button
         type="button"
         onClick={onBackToList}
-        className="rounded-xl border border-[var(--accent)] px-5 py-4 text-base font-semibold text-[var(--accent)] transition hover:bg-teal-50 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-teal-200"
+        className="rounded-xl border border-[var(--accent)] px-5 py-4 text-base font-semibold text-[var(--accent)] transition hover:bg-blue-950 focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-blue-400"
       >
         Back to Concept List
       </button>

@@ -26,7 +26,7 @@ function CountdownScreen({ seconds, onComplete }) {
         Get ready
       </p>
 
-      <div className="flex h-44 w-44 items-center justify-center rounded-full border-8 border-[var(--accent)]/20 bg-white text-7xl font-extrabold text-[var(--accent)] shadow-inner">
+      <div className="flex h-44 w-44 items-center justify-center rounded-full border-8 border-[var(--accent)]/20 bg-[#1a1a1a] text-7xl font-extrabold text-[var(--accent)] shadow-inner">
         {timeLeft}
       </div>
 

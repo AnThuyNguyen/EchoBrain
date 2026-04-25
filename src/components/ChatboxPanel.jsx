@@ -37,17 +37,17 @@ function ChatboxPanel({ onGenerateConceptsFromChat }) {
   };
 
   return (
-    <aside className="rounded-3xl border border-white/70 bg-[var(--panel)] p-5 shadow-2xl backdrop-blur-md sm:p-6">
+    <aside className="rounded-3xl border border-gray-700 bg-[var(--panel)] p-5 shadow-2xl sm:p-6">
       <h2 className="mb-4 text-lg font-bold">AI Chatbox</h2>
 
-      <div className="mb-4 flex max-h-80 min-h-72 flex-col gap-3 overflow-y-auto rounded-2xl bg-white/70 p-4">
+      <div className="mb-4 flex max-h-80 min-h-72 flex-col gap-3 overflow-y-auto rounded-2xl bg-[#1a1a1a] p-4">
         {messages.map((message) => (
           <div
             key={message.id}
             className={`max-w-[92%] rounded-xl px-3 py-2 text-sm leading-relaxed ${
               message.role === 'user'
                 ? 'ml-auto bg-[var(--accent)] text-white'
-                : 'mr-auto border border-teal-100 bg-white text-[var(--text-main)]'
+                : 'mr-auto border border-gray-600 bg-[#2a2a2a] text-[var(--text-main)]'
             }`}
           >
             {message.text}
@@ -65,7 +65,7 @@ function ChatboxPanel({ onGenerateConceptsFromChat }) {
         onKeyDown={handleKeyDown}
         rows={3}
         placeholder="Ask the AI about this concept..."
-        className="w-full resize-none rounded-xl border border-teal-100 bg-white/90 p-3 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2"
+        className="w-full resize-none rounded-xl border border-gray-600 bg-[#2a2a2a] p-3 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2"
       />
 
       <button
@@ -79,7 +79,7 @@ function ChatboxPanel({ onGenerateConceptsFromChat }) {
       <button
         type="button"
         onClick={() => onGenerateConceptsFromChat(userMessages.map((message) => message.text))}
-        className="mt-2 w-full rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-2 w-full rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Generate Concepts From AI Chat
       </button>

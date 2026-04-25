@@ -37,8 +37,6 @@ function App() {
   const goBackMap = {
     'concept-selection': 'onboarding',
     'concept': 'concept-selection',
-    'countdown': 'concept-selection',
-    'recording': 'concept-selection',
     'feedback': 'concept-selection',
   };
 
@@ -119,8 +117,12 @@ function App() {
   };
 
   const handleGoBack = () => {
+    if (phase === 'concept-selection') {
+      handleEndSession();
+      return;
+    }
+
     const goBackMap = {
-      'concept-selection': 'onboarding',
       'concept': 'concept-selection',
       'countdown': 'concept-selection',
       'recording': 'concept-selection',
@@ -148,24 +150,26 @@ function App() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center p-4 sm:p-8">
       <div className={`grid w-full gap-4 ${showChatbox ? 'lg:grid-cols-[1.35fr_1fr] lg:gap-6' : ''}`}>
-        <section className="w-full rounded-3xl border border-white/70 bg-[var(--panel)] p-6 shadow-2xl backdrop-blur-md sm:p-10">
-          <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
-            <button
-              type="button"
-              onClick={handleGoBack}
-              disabled={!canGoBack}
-              className="rounded-lg border border-[var(--accent)]/35 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-teal-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              Go Back
-            </button>
-            <button
-              type="button"
-              onClick={handleEndSession}
-              className="rounded-lg bg-[var(--warn)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-            >
-              End Session
-            </button>
-          </div>
+        <section className="w-full rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:p-10">
+          {phase !== 'onboarding' && (
+            <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
+              <button
+                type="button"
+                onClick={handleGoBack}
+                disabled={!canGoBack}
+                className="rounded-lg border border-[var(--accent)]/35 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                Go Back
+              </button>
+              <button
+                type="button"
+                onClick={handleEndSession}
+                className="rounded-lg bg-[var(--warn)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
+              >
+                End Session
+              </button>
+            </div>
+          )}
 
           {phase === 'onboarding' && (
             <OnboardingScreen
@@ -187,17 +191,6 @@ function App() {
           <ConceptScreen
             concept={currentConcept}
             onSkip={handleSkip}
-            onTest={handleTest}
-          />
-        )}
-
-        {phase === 'countdown' && (
-          <CountdownScreen seconds={5} onComplete={handleCountdownComplete} />
-        )}
-
-        {phase === 'recording' && (
-          <RecordingScreen
-            concept={currentConcept}
             onComplete={handleRecordingComplete}
           />
         )}

@@ -3,21 +3,19 @@
 @tailwind utilities;
 
 :root {
-  --bg-top: #f3efe5;
-  --bg-bottom: #455a88;
-  --panel: #ffffffcc;
-  --text-main: #17301f;
-  --text-soft: #3f5f4b;
-  --accent: #0f766e;
-  --accent-strong: #115e59;
-  --warn: #c2410c;
+  --panel: #1e1e1e;
+  --text-main: #f0f0f0;
+  --text-soft: #9ca3af;
+  --accent: #3b82f6;
+  --accent-strong: #2563eb;
+  --warn: #ef4444;
 }
 
 body {
   margin: 0;
   font-family: 'Space Grotesk', 'Avenir Next', 'Segoe UI', sans-serif;
   color: var(--text-main);
-  background: #455a88;
+  background: #111111;
   min-height: 100vh;
 }
 

@@ -13,12 +13,11 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
   };
 
   return (
+    
     <div className="flex flex-col items-center gap-8 text-center">
-      <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--text-soft)]">
-        Onboarding
-      </p>
+      <h1 className="text-balance text-6xl font-bold leading-tight sm:text-8xl">EchoBrain</h1>
 
-      <h1 className="text-balance text-4xl font-bold leading-tight sm:text-5xl">Create Concept List</h1>
+      <h2 className="text-balance text-xl font-semibold leading-tight">Test your memory</h2>
 
       <p className="max-w-xl text-base leading-relaxed text-[var(--text-soft)]">
         Choose one path: upload study material or use the AI chatbox to generate concepts.
@@ -35,12 +34,12 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
       <button
         type="button"
         onClick={handleUploadClick}
-        className="w-full max-w-md rounded-2xl border-2 border-dashed border-[var(--accent)] px-8 py-4 text-lg font-semibold text-[var(--accent)] transition hover:bg-teal-50"
+        className="w-full max-w-md rounded-2xl border-2 border-dashed border-[var(--accent)] px-8 py-4 text-lg font-semibold text-[var(--accent)] transition hover:bg-blue-950"
       >
         Upload Study Material
       </button>
 
-      <p className="rounded-xl bg-white/70 px-4 py-2 text-sm text-[var(--text-soft)]">
+      <p className="rounded-xl bg-gray-800 px-4 py-2 text-sm text-[var(--text-soft)]">
         Selected: {fileName || 'No file selected yet'}
       </p>
 
