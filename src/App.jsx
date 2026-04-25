@@ -70,7 +70,8 @@ function App() {
   };
 
   const handleAgain = () => {
-    transitionTo('countdown');
+    setTranscript('');
+    transitionTo('concept');
   };
 
   const handleSelectConceptFromFeedback = (index) => {
