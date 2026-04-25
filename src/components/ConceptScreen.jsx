@@ -3,6 +3,10 @@ import { useState, useEffect } from 'react';
 function ConceptScreen({ concept, onSkip, onComplete }) {
   const COUNTDOWN_SECS = 5;
   const RECORD_SECS = 60;
+  const RING_SIZE = 164;
+  const RING_CENTER = RING_SIZE / 2;
+  const RING_RADIUS = 62;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
   const [mode, setMode] = useState('idle'); // 'idle' | 'countdown' | 'recording'
   const [countdown, setCountdown] = useState(COUNTDOWN_SECS);
@@ -42,6 +46,7 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
     mode === 'recording'
       ? ((RECORD_SECS - recordTime) / RECORD_SECS) * 100
       : 0;
+  const progressFraction = progress / 100;
 
   const isRecording = mode === 'recording';
   const buttonBase =
@@ -50,46 +55,80 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
     ? 'bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-400'
     : 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-400';
 
+  const secondTicks = Array.from({ length: RECORD_SECS }, (_, second) => {
+    const angle = (second / RECORD_SECS) * 2 * Math.PI - Math.PI / 2;
+    const isMajorSecond = second % 5 === 0;
+    const outer = RING_RADIUS + 14;
+    const inner = RING_RADIUS + (isMajorSecond ? 2 : 6);
+
+    return {
+      second,
+      isMajorSecond,
+      x1: RING_CENTER + outer * Math.cos(angle),
+      y1: RING_CENTER + outer * Math.sin(angle),
+      x2: RING_CENTER + inner * Math.cos(angle),
+      y2: RING_CENTER + inner * Math.sin(angle),
+    };
+  });
+
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--text-soft)]">
-        Current concept
+        Tell me about
       </p>
 
       <h1 className="text-balance text-4xl font-bold leading-tight sm:text-5xl">
         {concept}
       </h1>
 
-      <button
-        type="button"
-        onClick={handleClick}
-        disabled={mode === 'countdown'}
-        className={`${buttonBase} ${buttonColor} ${mode === 'idle' ? 'hover:scale-105' : ''}`}
-        aria-label={
-          isRecording ? 'Stop Recording' : mode === 'countdown' ? `Starting in ${countdown}` : 'Start Test'
-        }
-      >
-        {mode === 'countdown' ? (
-          <span className="text-4xl font-bold text-white">{countdown}</span>
-        ) : isRecording ? (
-          <span className="text-lg font-bold tracking-widest text-white">STOP</span>
-        ) : null}
-      </button>
+      <div className="relative flex h-44 w-44 items-center justify-center">
+        <svg
+          className="pointer-events-none absolute inset-0"
+          viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
+          aria-hidden="true"
+        >
+          <circle
+            cx={RING_CENTER}
+            cy={RING_CENTER}
+            r={RING_RADIUS}
+            fill="none"
+            stroke={isRecording ? '#374151' : 'transparent'}
+            strokeWidth="20"
+          />
 
-      {/* reserved space for progress bar — always rendered to prevent layout shift */}
-      <div className={`w-full max-w-xs overflow-hidden rounded-full transition-colors duration-300 ${isRecording ? 'bg-gray-700' : 'bg-transparent'}`} style={{ height: '6px' }}>
-        <div
-          className="h-full rounded-full bg-blue-500 transition-all duration-1000"
-          style={{ width: isRecording ? `${progress}%` : '0%' }}
-        />
+
+          <circle
+            cx={RING_CENTER}
+            cy={RING_CENTER}
+            r={RING_RADIUS}
+            fill="none"
+            stroke="#3bf689"
+            strokeWidth="10"
+            strokeLinecap="round"
+            strokeDasharray={RING_CIRCUMFERENCE}
+            strokeDashoffset={isRecording ? RING_CIRCUMFERENCE * (1 - progressFraction) : RING_CIRCUMFERENCE}
+            transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
+            style={{ transition: 'stroke-dashoffset 1s linear' }}
+          />
+        </svg>
+
+        <button
+          type="button"
+          onClick={handleClick}
+          disabled={mode === 'countdown'}
+          className={`${buttonBase} ${buttonColor} ${mode === 'idle' ? 'hover:scale-105' : ''} z-10`}
+          aria-label={
+            isRecording ? 'Stop Recording' : mode === 'countdown' ? `Starting in ${countdown}` : 'Start Test'
+          }
+        >
+          {mode === 'countdown' ? (
+            <span className="text-4xl font-bold text-white">{countdown}</span>
+          ) : isRecording ? (
+            <span className="text-lg font-bold tracking-widest text-white">FINISH</span>
+          ) : null}
+        </button>
       </div>
 
-      {/* fixed-height status text to prevent jump */}
-      <p className="h-5 text-sm text-[var(--text-soft)]">
-        {mode === 'idle' && 'Tap to start recording'}
-        {mode === 'countdown' && 'Get ready…'}
-        {mode === 'recording' && 'Recording — tap to stop'}
-      </p>
 
     </div>
   );
