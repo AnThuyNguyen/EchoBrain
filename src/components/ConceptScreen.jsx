@@ -1,27 +1,36 @@
-import { useState, useEffect } from 'react';
+import { useEffect, useState } from 'react';
 
-function ConceptScreen({ concept, onSkip, onComplete }) {
-  const COUNTDOWN_SECS = 5;
+function ConceptScreen({ concept, onComplete }) {
+  const COUNTDOWN_SECS = 3;
   const RECORD_SECS = 60;
+  const ARMING_MS = 800;
   const RING_SIZE = 164;
   const RING_CENTER = RING_SIZE / 2;
   const RING_RADIUS = 62;
   const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
 
-  const [mode, setMode] = useState('idle'); // 'idle' | 'countdown' | 'recording'
+  const [mode, setMode] = useState('idle'); // 'idle' | 'countdown' | 'arming' | 'recording'
   const [countdown, setCountdown] = useState(COUNTDOWN_SECS);
   const [recordTime, setRecordTime] = useState(RECORD_SECS);
 
   useEffect(() => {
     if (mode !== 'countdown') return;
     if (countdown <= 0) {
-      setMode('recording');
-      setRecordTime(RECORD_SECS);
+      setMode('arming');
       return;
     }
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
   }, [mode, countdown]);
+
+  useEffect(() => {
+    if (mode !== 'arming') return;
+    const t = setTimeout(() => {
+      setRecordTime(RECORD_SECS);
+      setMode('recording');
+    }, ARMING_MS);
+    return () => clearTimeout(t);
+  }, [mode]);
 
   useEffect(() => {
     if (mode !== 'recording') return;
@@ -49,27 +58,27 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
   const progressFraction = progress / 100;
 
   const isRecording = mode === 'recording';
+  const isArming = mode === 'arming';
   const buttonBase =
     'flex h-28 w-28 items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-4 active:scale-95';
   const buttonColor = isRecording
     ? 'bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-400'
     : 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-400';
 
-  const secondTicks = Array.from({ length: RECORD_SECS }, (_, second) => {
-    const angle = (second / RECORD_SECS) * 2 * Math.PI - Math.PI / 2;
-    const isMajorSecond = second % 5 === 0;
-    const outer = RING_RADIUS + 14;
-    const inner = RING_RADIUS + (isMajorSecond ? 2 : 6);
+  const formatTimer = (totalSeconds) => {
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = totalSeconds % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  };
 
-    return {
-      second,
-      isMajorSecond,
-      x1: RING_CENTER + outer * Math.cos(angle),
-      y1: RING_CENTER + outer * Math.sin(angle),
-      x2: RING_CENTER + inner * Math.cos(angle),
-      y2: RING_CENTER + inner * Math.sin(angle),
-    };
-  });
+  const timerLabel =
+    mode === 'recording'
+      ? formatTimer(recordTime)
+      : mode === 'countdown'
+      ? formatTimer(countdown)
+      : mode === 'arming'
+      ? '0:00'
+      : '0:00';
 
   return (
     <div className="flex flex-col items-center gap-6 text-center">
@@ -82,6 +91,12 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
       </h1>
 
       <div className="relative flex h-44 w-44 items-center justify-center">
+        <div
+          className={`absolute left-1/2 top-1 z-20 h-10 w-1 -translate-x-1/2 origin-bottom rounded-full bg-yellow-400 transition-all duration-700 ease-out ${
+            isArming || isRecording ? 'scale-y-100 opacity-100' : 'scale-y-0 opacity-0'
+          }`}
+        />
+
         <svg
           className="pointer-events-none absolute inset-0"
           viewBox={`0 0 ${RING_SIZE} ${RING_SIZE}`}
@@ -92,19 +107,9 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
             cy={RING_CENTER}
             r={RING_RADIUS}
             fill="none"
-            stroke={isRecording ? '#374151' : 'transparent'}
-            strokeWidth="20"
-          />
-
-
-          <circle
-            cx={RING_CENTER}
-            cy={RING_CENTER}
-            r={RING_RADIUS}
-            fill="none"
-            stroke="#3bf689"
+            stroke="#facc15"
             strokeWidth="10"
-            strokeLinecap="round"
+            strokeLinecap="butt"
             strokeDasharray={RING_CIRCUMFERENCE}
             strokeDashoffset={isRecording ? RING_CIRCUMFERENCE * (1 - progressFraction) : RING_CIRCUMFERENCE}
             transform={`rotate(-90 ${RING_CENTER} ${RING_CENTER})`}
@@ -115,21 +120,31 @@ function ConceptScreen({ concept, onSkip, onComplete }) {
         <button
           type="button"
           onClick={handleClick}
-          disabled={mode === 'countdown'}
+          disabled={mode === 'countdown' || isArming}
           className={`${buttonBase} ${buttonColor} ${mode === 'idle' ? 'hover:scale-105' : ''} z-10`}
           aria-label={
-            isRecording ? 'Stop Recording' : mode === 'countdown' ? `Starting in ${countdown}` : 'Start Test'
+            isRecording
+              ? 'Stop Recording'
+              : mode === 'countdown'
+              ? `Starting in ${countdown}`
+              : isArming
+              ? 'Starting Recording'
+              : 'Start Test'
           }
         >
           {mode === 'countdown' ? (
             <span className="text-4xl font-bold text-white">{countdown}</span>
           ) : isRecording ? (
             <span className="text-lg font-bold tracking-widest text-white">FINISH</span>
+          ) : isArming ? (
+            <span className="text-xs font-semibold tracking-[0.2em] text-white">...</span>
           ) : null}
         </button>
       </div>
 
-
+      <p className="h-5 text-sm font-semibold tracking-[0.15em] text-yellow-400">
+        {timerLabel}
+      </p>
     </div>
   );
 }

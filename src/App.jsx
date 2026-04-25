@@ -1,7 +1,5 @@
 import { useMemo, useState } from 'react';
 import ConceptScreen from './components/ConceptScreen';
-import CountdownScreen from './components/CountdownScreen';
-import RecordingScreen from './components/RecordingScreen';
 import FeedbackScreen from './components/FeedbackScreen';
 import OnboardingScreen from './components/OnboardingScreen';
 import ChatboxPanel from './components/ChatboxPanel';
@@ -20,19 +18,11 @@ function App() {
   const [concepts, setConcepts] = useState(defaultConcepts);
   const [conceptIndex, setConceptIndex] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const [history, setHistory] = useState([]);
   const [studyFileName, setStudyFileName] = useState('');
   const [conceptSourceLabel, setConceptSourceLabel] = useState('None yet');
   const [showChatbox, setShowChatbox] = useState(true);
 
-  const currentConcept = useMemo(() => concepts[conceptIndex], [conceptIndex]);
-
-  const transitionTo = (nextPhase, { trackHistory = true } = {}) => {
-    if (trackHistory) {
-      setHistory((prev) => [...prev, phase]);
-    }
-    setPhase(nextPhase);
-  };
+  const currentConcept = useMemo(() => concepts[conceptIndex], [concepts, conceptIndex]);
 
   const goBackMap = {
     'concept-selection': 'onboarding',
@@ -42,52 +32,30 @@ function App() {
 
   const canGoBack = Object.keys(goBackMap).includes(phase);
 
-  const goToNextConcept = () => {
-    if (concepts.length === 0) {
-      return;
-    }
-
-    setConceptIndex((prev) => (prev + 1) % concepts.length);
-    setTranscript('');
-  };
-
-  const handleSkip = () => {
-    goToNextConcept();
-    setPhase('concept');
-  };
-
-  const handleTest = () => {
-    transitionTo('countdown');
-  };
-
-  const handleCountdownComplete = () => {
-    transitionTo('recording');
-  };
-
   const handleRecordingComplete = (capturedTranscript) => {
     setTranscript(capturedTranscript);
-    transitionTo('feedback');
+    setPhase('feedback');
   };
 
   const handleAgain = () => {
     setTranscript('');
-    transitionTo('concept');
+    setPhase('concept');
   };
 
   const handleSelectConceptFromFeedback = (index) => {
     setConceptIndex(index);
     setTranscript('');
-    transitionTo('concept');
+    setPhase('concept');
   };
 
   const handleBackToConceptList = () => {
     setTranscript('');
-    transitionTo('concept-selection');
+    setPhase('concept-selection');
   };
 
   const handleStartSession = () => {
     setShowChatbox(false);
-    transitionTo('concept-selection');
+    setPhase('concept-selection');
   };
 
   const handleFileSelected = (fileName) => {
@@ -104,7 +72,7 @@ function App() {
     handleStartSession();
   };
 
-  const handleGenerateConceptsFromChat = (chatPrompts) => {
+  const handleGenerateConceptsFromChat = () => {
     setConcepts(placeholderGeneratedConcepts);
     setConceptSourceLabel('AI Chatbox');
     setConceptIndex(0);
@@ -114,7 +82,7 @@ function App() {
 
   const handleChooseConcept = (index) => {
     setConceptIndex(index);
-    transitionTo('concept');
+    setPhase('concept');
   };
 
   const handleGoBack = () => {
@@ -122,13 +90,6 @@ function App() {
       handleEndSession();
       return;
     }
-
-    const goBackMap = {
-      'concept': 'concept-selection',
-      'countdown': 'concept-selection',
-      'recording': 'concept-selection',
-      'feedback': 'concept-selection',
-    };
 
     const nextPhase = goBackMap[phase];
     if (nextPhase) {
@@ -141,7 +102,6 @@ function App() {
     setPhase('onboarding');
     setConceptIndex(0);
     setTranscript('');
-    setHistory([]);
     setStudyFileName('');
     setConceptSourceLabel('None yet');
     setConcepts(defaultConcepts);
@@ -188,26 +148,24 @@ function App() {
             />
           )}
 
-        {phase === 'concept' && (
-          <ConceptScreen
-            concept={currentConcept}
-            onSkip={handleSkip}
-            onComplete={handleRecordingComplete}
-          />
-        )}
+          {phase === 'concept' && (
+            <ConceptScreen
+              concept={currentConcept}
+              onComplete={handleRecordingComplete}
+            />
+          )}
 
-        {phase === 'feedback' && (
-          <FeedbackScreen
-            concept={currentConcept}
-            transcript={transcript}
-            onAgain={handleAgain}
-            concepts={concepts}
-            currentConceptIndex={conceptIndex}
-            onSelectConcept={handleSelectConceptFromFeedback}
-            onBackToList={handleBackToConceptList}
-          />
-        )}
-
+          {phase === 'feedback' && (
+            <FeedbackScreen
+              concept={currentConcept}
+              transcript={transcript}
+              onAgain={handleAgain}
+              concepts={concepts}
+              currentConceptIndex={conceptIndex}
+              onSelectConcept={handleSelectConceptFromFeedback}
+              onBackToList={handleBackToConceptList}
+            />
+          )}
         </section>
 
         {showChatbox && <ChatboxPanel onGenerateConceptsFromChat={handleGenerateConceptsFromChat} />}
