@@ -1,4 +1,7 @@
 # EchoBrain
+Project for BroncoHacks 2026
+Quick start to run locally.
+
 
 ```bash
 # Terminal 1 (frontend)
