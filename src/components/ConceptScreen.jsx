@@ -105,6 +105,7 @@ function ConceptScreen({ concept, onComplete }) {
 
   const isRecording = mode === 'recording';
   const isArming = mode === 'arming';
+  const showDescription = mode === 'idle';
   const buttonBase =
     'flex h-28 w-28 items-center justify-center rounded-full transition-[background-color,transform,box-shadow] duration-700 ease-out focus-visible:outline-none focus-visible:ring-4 active:scale-95';
   const buttonColor = isRecording
@@ -126,6 +127,10 @@ function ConceptScreen({ concept, onComplete }) {
       ? '0:00'
       : '0:00';
 
+  // Split description: first line = intro sentence, rest = fragment bullets
+  const [descIntro, ...descBulletLines] = concept.description.split('\n');
+  const descBullets = descBulletLines.map((l) => l.replace(/^[-–•]\s*/, '').trim()).filter(Boolean);
+
   return (
     <div className="flex flex-col items-center gap-6 text-center">
       <p className="text-sm font-semibold uppercase tracking-[0.25em] text-[var(--text-soft)]">
@@ -133,8 +138,29 @@ function ConceptScreen({ concept, onComplete }) {
       </p>
 
       <h1 className="text-balance text-4xl font-bold leading-tight sm:text-5xl">
-        {concept.name}
+        ⭐ {concept.name}
       </h1>
+
+      {/* Always reserve space so the button never jumps when description hides */}
+      <div className="w-full max-w-2xl">
+        <div
+          className={`overflow-hidden rounded-2xl border border-gray-700 bg-[#232323] px-4 text-left text-sm leading-relaxed text-[var(--text-soft)] transition-[max-height,opacity,padding] duration-500 ease-in-out ${
+            showDescription ? 'max-h-[32rem] py-3 opacity-100' : 'max-h-0 border-transparent py-0 opacity-0'
+          }`}
+        >
+          {descIntro && <p className="mb-2 text-sm leading-snug">{descIntro}</p>}
+          {descBullets.length > 0 && (
+            <ul className="space-y-1 pl-1">
+              {descBullets.map((b, i) => (
+                <li key={i} className="flex gap-2 text-sm">
+                  <span className="shrink-0 text-[var(--accent)]">–</span>
+                  {b}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      </div>
 
       <div className="relative flex h-44 w-44 items-center justify-center">
         <div

@@ -80,6 +80,7 @@ function App() {
     } catch (err) {
       console.error('Analysis error:', err);
       setAiFeedback({
+        rating: null,
         correctPoints: [],
         missingPoints: [],
         summary: `Could not analyse your explanation: ${err.message}. Please check the backend and try again.`,
@@ -143,14 +144,40 @@ function App() {
     }
   };
 
-  const handleGenerateConceptsFromChat = () => {
-    // Chat-based concept generation keeps placeholder for now
-    setConcepts(defaultConcepts);
-    setConceptSourceLabel('AI Chatbox');
-    setConceptIndex(0);
-    setTranscript('');
-    setAiFeedback('');
-    handleStartSession();
+  const handleGenerateConceptsFromChat = async (chatMessages) => {
+    const conversationText = (chatMessages || [])
+      .map(({ role, text }) => `${role === 'assistant' ? 'Tutor' : 'Student'}: ${text}`)
+      .join('\n\n')
+      .trim();
+
+    if (!conversationText) return;
+
+    setIsGenerating(true);
+
+    try {
+      const chatFile = new File([conversationText], 'chat-knowledge.txt', { type: 'text/plain' });
+      const formData = new FormData();
+      formData.append('file', chatFile);
+
+      const res = await fetch(`${API}/api/extract-concepts`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to extract concepts from chat');
+      }
+
+      const data = await res.json();
+      setConcepts(data.concepts);
+      setConceptSourceLabel('AI Chatbox');
+      setConceptIndex(0);
+      setTranscript('');
+      setAiFeedback(null);
+      handleStartSession();
+    } catch (err) {
+      console.error('Extract chat concepts error:', err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleChooseConcept = (index) => {
@@ -185,8 +212,8 @@ function App() {
   return (
     <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-start gap-4 p-4 sm:p-8">
       <HeaderBar large={phase === 'onboarding'} />
-      <div className={`grid w-full items-stretch gap-4 ${showChatbox ? 'lg:grid-cols-[1.35fr_1fr] lg:gap-6' : ''}`}>
-        <section className="min-h-[34rem] w-full rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:min-h-[38rem] sm:p-5">
+      <div className={`flex w-full flex-col gap-4 sm:gap-6 ${showChatbox ? 'lg:flex-row lg:items-stretch' : ''}`}>
+        <section className={`w-full rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:p-5 ${showChatbox ? 'lg:w-[34%] lg:shrink-0' : 'min-h-[34rem] sm:min-h-[38rem]'}`}>
           {phase !== 'onboarding' && phase !== 'celebration' && (
             <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
               <button

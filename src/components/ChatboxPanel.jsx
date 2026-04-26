@@ -10,7 +10,7 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
   ]);
   const [draft, setDraft] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const userMessages = messages.filter((message) => message.role === 'user');
+  const hasConversation = messages.some((message) => message.role !== 'assistant' || message.id !== 'welcome');
 
   const handleSend = async () => {
     const prompt = draft.trim();
@@ -62,7 +62,7 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
   };
 
   return (
-    <aside className="flex min-h-[34rem] flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-5 shadow-2xl sm:min-h-[38rem] sm:p-6">
+    <aside className="flex h-[32rem] w-full flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-5 shadow-2xl sm:p-6 lg:h-auto lg:flex-1">
       <h2 className="mb-4 text-lg font-bold">AI Chatbox</h2>
 
       <div className="mb-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-2xl bg-[#1a1a1a] p-4">
@@ -105,7 +105,8 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
 
       <button
         type="button"
-        onClick={() => onGenerateConceptsFromChat(userMessages.map((message) => message.text))}
+        onClick={() => onGenerateConceptsFromChat(messages)}
+        disabled={isLoading || !hasConversation}
         className="mt-2 w-full rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-40"
       >
         Generate Concepts From AI Chat

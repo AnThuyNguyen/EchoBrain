@@ -62,6 +62,11 @@ function FeedbackScreen({ concept, transcript, aiFeedback, isAnalyzing, onAgain,
 
           <h2 className="text-3xl font-bold">{concept.name}</h2>
 
+          <div className="rounded-xl border border-gray-600 bg-[#242424] p-4 text-sm text-[var(--text-soft)]">
+            <span className="font-semibold text-white">Concept card definition: </span>
+            <span className="whitespace-pre-line">{concept.description}</span>
+          </div>
+
           {transcript ? (
             <p className="rounded-xl border border-gray-600 bg-[#2a2a2a] p-4 text-sm text-[var(--text-soft)]">
               <span className="font-semibold text-white">Your explanation: </span>{transcript}
