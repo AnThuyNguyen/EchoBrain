@@ -62,7 +62,7 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
   };
 
   return (
-    <aside className="flex min-h-[20rem] w-full flex-1 flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-3 shadow-2xl sm:p-5 lg:h-auto lg:flex-1">
+    <aside className="flex h-full min-h-[20rem] w-full flex-1 flex-col overflow-hidden rounded-3xl border border-gray-700 bg-[var(--panel)] p-3 shadow-2xl sm:p-5">
       <h2 className="mb-2 text-base font-bold sm:mb-3 sm:text-lg">AI Chatbox</h2>
 
       <div className="mb-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-2xl bg-[#1a1a1a] p-3">

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { HiMiniMicrophone } from 'react-icons/hi2';
 import ConceptScreen from './components/ConceptScreen';
 import FeedbackScreen from './components/FeedbackScreen';
 import OnboardingScreen from './components/OnboardingScreen';
@@ -44,6 +45,10 @@ function App() {
   const conceptIndexRef = useRef(conceptIndex);
   const speechAudioRef = useRef(null);
   const speechAbortRef = useRef(null);
+  const browserUtteranceRef = useRef(null);
+  const listenAnalyserRef = useRef(null);
+  const listenAudioCtxRef = useRef(null);
+  const listenAnimFrameRef = useRef(null);
   const spokenFeedbackKeyRef = useRef('');
   const spokenPromptsRef = useRef(new Set());
   const aiFeedbackRef = useRef(aiFeedback);
@@ -254,6 +259,10 @@ function App() {
       speechAudioRef.current.currentTime = 0;
       speechAudioRef.current = null;
     }
+    if (typeof window !== 'undefined' && window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    browserUtteranceRef.current = null;
     spokenFeedbackKeyRef.current = '';
     spokenPromptsRef.current = new Set();
     if (recognitionRef.current) {
@@ -283,6 +292,36 @@ function App() {
     if (!text?.trim()) return;
     if (!force && !isVoiceModeOn) return;
 
+    const speakWithBrowserTTS = () =>
+      new Promise((resolve) => {
+        if (typeof window === 'undefined' || !window.speechSynthesis || !window.SpeechSynthesisUtterance) {
+          resolve(false);
+          return;
+        }
+        try {
+          window.speechSynthesis.cancel();
+          const utterance = new window.SpeechSynthesisUtterance(text);
+          browserUtteranceRef.current = utterance;
+          utterance.rate = 1;
+          utterance.pitch = 1;
+          utterance.onend = () => {
+            if (browserUtteranceRef.current === utterance) {
+              browserUtteranceRef.current = null;
+            }
+            resolve(true);
+          };
+          utterance.onerror = () => {
+            if (browserUtteranceRef.current === utterance) {
+              browserUtteranceRef.current = null;
+            }
+            resolve(false);
+          };
+          window.speechSynthesis.speak(utterance);
+        } catch {
+          resolve(false);
+        }
+      });
+
     if (speechAudioRef.current) {
       speechAudioRef.current.pause();
       speechAudioRef.current.currentTime = 0;
@@ -309,12 +348,14 @@ function App() {
 
       if (!res.ok) {
         speechAbortRef.current = null;
+        await speakWithBrowserTTS();
         return;
       }
 
       const audioBlob = await res.blob();
       if (!audioBlob.size) {
         speechAbortRef.current = null;
+        await speakWithBrowserTTS();
         return;
       }
 
@@ -322,6 +363,17 @@ function App() {
       const audio = new Audio(audioUrl);
       speechAudioRef.current = audio;
       speechAbortRef.current = null;
+
+      try {
+        await audio.play();
+      } catch {
+        URL.revokeObjectURL(audioUrl);
+        if (speechAudioRef.current === audio) {
+          speechAudioRef.current = null;
+        }
+        await speakWithBrowserTTS();
+        return;
+      }
 
       await new Promise((resolve) => {
         audio.onended = () => {
@@ -338,10 +390,10 @@ function App() {
           }
           resolve();
         };
-        audio.play().catch(resolve);
       });
     } catch {
       speechAbortRef.current = null;
+      await speakWithBrowserTTS();
     }
   };
 
@@ -599,6 +651,9 @@ function App() {
     // Pre-guard page-specific keys so useEffects don't double-fire while welcome plays
     const voiceOnPhase = phaseRef.current;
     const voiceOnIndex = conceptIndexRef.current;
+    if (voiceOnPhase === 'concept-selection') {
+      spokenPromptsRef.current.add('concept-selection-prompt');
+    }
     if (voiceOnPhase === 'concept' && conceptsRef.current[voiceOnIndex]?.name) {
       spokenPromptsRef.current.add(`ready-${voiceOnIndex}`);
     }
@@ -634,7 +689,27 @@ function App() {
   };
 
   useEffect(() => {
-    if (phase !== 'concept' || !isVoiceModeOn) return;
+    if (phase !== 'concept-selection') {
+      spokenPromptsRef.current.delete('concept-selection-prompt');
+      return;
+    }
+    if (!isVoiceModeOn) return;
+    const key = 'concept-selection-prompt';
+    if (spokenPromptsRef.current.has(key)) return;
+    spokenPromptsRef.current.add(key);
+    void speakVoicePrompt('Say Test, along with a concept name to test yourself, or Concept List to hear all the available concept names.');
+  }, [phase, isVoiceModeOn]);
+
+  useEffect(() => {
+    if (phase !== 'concept') {
+      for (const key of Array.from(spokenPromptsRef.current)) {
+        if (key.startsWith('ready-')) {
+          spokenPromptsRef.current.delete(key);
+        }
+      }
+      return;
+    }
+    if (!isVoiceModeOn) return;
     if (!currentConcept?.name) return;
     const key = `ready-${conceptIndex}`;
     if (spokenPromptsRef.current.has(key)) return;
@@ -662,6 +737,68 @@ function App() {
     void speakVoicePrompt(feedbackSpeech);
   }, [phase, isVoiceModeOn, isAnalyzing, aiFeedback, transcript, conceptIndex]);
 
+  // Run a mic analyser for the visualizer bars whenever voice mode is on but not recording
+  useEffect(() => {
+    if (!isVoiceModeOn || isRecordingVoice) {
+      // Stop listener analyser — recording will drive bars instead, or voice is off
+      if (listenAnimFrameRef.current) {
+        cancelAnimationFrame(listenAnimFrameRef.current);
+        listenAnimFrameRef.current = null;
+      }
+      listenAnalyserRef.current = null;
+      if (listenAudioCtxRef.current) {
+        listenAudioCtxRef.current.close();
+        listenAudioCtxRef.current = null;
+      }
+      if (!isRecordingVoice) {
+        setVoiceAudioBars(Array(18).fill(0.04));
+      }
+      return;
+    }
+
+    let stream;
+    navigator.mediaDevices.getUserMedia({ audio: true }).then((s) => {
+      stream = s;
+      const audioContext = new window.AudioContext();
+      const analyser = audioContext.createAnalyser();
+      analyser.fftSize = 64;
+      analyser.smoothingTimeConstant = 0.6;
+      analyser.minDecibels = -90;
+      analyser.maxDecibels = -10;
+      const source = audioContext.createMediaStreamSource(s);
+      source.connect(analyser);
+      listenAudioCtxRef.current = audioContext;
+      listenAnalyserRef.current = analyser;
+
+      const freqData = new Uint8Array(analyser.frequencyBinCount);
+      const barCount = 18;
+      const tick = () => {
+        if (!listenAnalyserRef.current) return;
+        listenAnalyserRef.current.getByteFrequencyData(freqData);
+        const nextBars = Array.from({ length: barCount }, (_, i) => {
+          const idx = Math.floor((i / barCount) * freqData.length);
+          return Math.max(0.04, Math.min(1, (freqData[idx] / 255) * 2.8));
+        });
+        setVoiceAudioBars(nextBars);
+        listenAnimFrameRef.current = requestAnimationFrame(tick);
+      };
+      tick();
+    }).catch(() => {});
+
+    return () => {
+      if (listenAnimFrameRef.current) {
+        cancelAnimationFrame(listenAnimFrameRef.current);
+        listenAnimFrameRef.current = null;
+      }
+      listenAnalyserRef.current = null;
+      if (listenAudioCtxRef.current) {
+        listenAudioCtxRef.current.close();
+        listenAudioCtxRef.current = null;
+      }
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [isVoiceModeOn, isRecordingVoice]);
+
   useEffect(() => {
     return () => {
       recognitionRef.current?.stop();
@@ -675,6 +812,10 @@ function App() {
         speechAudioRef.current.pause();
         speechAudioRef.current.currentTime = 0;
       }
+      if (typeof window !== 'undefined' && window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      browserUtteranceRef.current = null;
     };
   }, []);
 
@@ -687,10 +828,10 @@ function App() {
         onGoBack={handleGoBack}
         onEndSession={handleEndSession}
       />
-      <div className={`flex w-full flex-col gap-4 sm:gap-6 ${showChatbox ? 'flex-1 lg:flex-row lg:items-stretch' : ''}`}>
-        <section className={`relative w-full rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:p-5 ${showChatbox ? 'lg:w-[34%] lg:shrink-0' : 'min-h-[34rem] sm:min-h-[38rem]'}`}>
+      <div className={`flex w-full flex-col gap-4 sm:gap-6 ${showChatbox ? 'flex-1 lg:h-[calc(100svh-9rem)] lg:flex-row lg:items-stretch' : ''}`}>
+        <section className={`relative flex w-full flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:p-5 ${showChatbox ? 'lg:h-full lg:min-h-0 lg:w-[34%] lg:shrink-0' : 'min-h-[34rem] sm:min-h-[38rem]'}`}>
           {phase === 'onboarding' && (
-            <div className="fixed bottom-4 right-4 z-50">
+            <div className="hidden sm:block fixed bottom-4 right-4 z-50">
               <p className="rounded-xl border border-gray-700 bg-[#1b1b1b]/90 px-3 py-2 text-[11px] text-[var(--text-soft)] shadow-lg backdrop-blur">
                 Voice mode available after concepts are generated!
               </p>
@@ -700,9 +841,9 @@ function App() {
           {phase !== 'onboarding' && (
             <>
               {/* Voice button fixed bottom-right; panel stacks above it when active */}
-              <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
+              <div className="fixed bottom-0 left-0 right-0 z-50 flex flex-col items-stretch gap-2 p-3 sm:bottom-4 sm:left-auto sm:right-4 sm:w-auto sm:items-end sm:p-0">
                 {isVoiceModeOn && (
-                  <div className="w-52 rounded-xl border border-gray-700 bg-[#1b1b1b]/95 p-3 text-[11px] text-[var(--text-soft)] shadow-2xl backdrop-blur">
+                  <div className="w-full rounded-xl border border-gray-700 bg-[#1b1b1b]/95 p-3 text-[11px] text-[var(--text-soft)] shadow-2xl backdrop-blur sm:w-52">
                     <div className="mb-2 flex h-8 w-full items-end justify-center gap-[2px]">
                       {voiceAudioBars.map((level, i) => (
                         <span
@@ -723,44 +864,30 @@ function App() {
                     {/* Phase-specific commands */}
                     <p className="mb-1 font-semibold text-[var(--text-main)]">Commands</p>
                     {phase === 'concept-selection' && (
-                      <>
-                        <p>Test [concept name]</p>
-                        <p>Concept list</p>
-                        <p>End session</p>
-                      </>
+                      <p className="overflow-x-auto whitespace-nowrap">Test [concept name], Concept list, End session</p>
                     )}
                     {phase === 'concept' && (
-                      <>
-                        <p>Ready</p>
-                        <p>Read concept</p>
-                        <p>Go back</p>
-                        <p>Concept list</p>
-                        <p>Finish Test <span className="text-gray-500">(+ 4s silence)</span></p>
-                        <p>End session</p>
-                      </>
+                      <p className="overflow-x-auto whitespace-nowrap">Ready, Read concept, Go back, Concept list, Finish test (+ 4s silence), End session</p>
                     )}
                     {phase === 'feedback' && (
-                      <>
-                        <p>Again</p>
-                        <p>Concept list</p>
-                        <p>End session</p>
-                      </>
+                      <p className="overflow-x-auto whitespace-nowrap">Again, Concept list, End session</p>
                     )}
                   </div>
                 )}
                 <button
                   type="button"
                   onClick={handleSectionVoiceClick}
-                  className="rounded-lg border border-[var(--accent)]/35 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-blue-950 sm:px-4 sm:py-2 sm:text-sm bg-[#1b1b1b]/90 shadow-lg backdrop-blur"
+                  className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-[var(--accent)]/35 px-3 py-1.5 text-xs font-semibold text-[var(--accent)] transition hover:bg-blue-950 sm:w-auto sm:gap-2 sm:px-4 sm:py-2 sm:text-sm bg-[#1b1b1b]/90 shadow-lg backdrop-blur"
                 >
-                  {isVoiceModeOn ? 'Voice On' : 'Voice'}
+                  <HiMiniMicrophone className="h-4 w-4 sm:h-[18px] sm:w-[18px]" aria-hidden="true" />
+                  <span>{isVoiceModeOn ? 'Voice On' : 'Voice'}</span>
                 </button>
               </div>
             </>
           )}
 
           {phase === 'onboarding' && (
-            <div className="page-enter-pop" key="phase-onboarding">
+            <div className="page-enter-pop flex-1" key="phase-onboarding">
               <OnboardingScreen
                 fileName={studyFileName}
                 onFileSelected={handleFileSelected}

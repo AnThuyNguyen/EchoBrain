@@ -2,6 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
+
 :root {
   --panel: #1e1e1e;
   --text-main: #f0f0f0;

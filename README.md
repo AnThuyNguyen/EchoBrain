@@ -1,6 +1,7 @@
 # EchoBrain
 
-Clickable React + Tailwind prototype for BroncoHack2026.
+Simple study app built with React + Vite.
+Project for BroncoHacks 2026
 
 ## Run locally
 
