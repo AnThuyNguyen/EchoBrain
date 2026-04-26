@@ -820,7 +820,15 @@ function App() {
   }, []);
 
   return (
-    <main className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-start gap-3 p-3 sm:gap-4 sm:p-6">
+    <main
+      className={`mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-start gap-3 p-3 sm:gap-4 sm:p-6 sm:pb-6 ${
+        phase !== 'onboarding'
+          ? isVoiceModeOn
+            ? 'pb-[calc(16rem+env(safe-area-inset-bottom))]'
+            : 'pb-[calc(5.5rem+env(safe-area-inset-bottom))]'
+          : 'pb-3'
+      }`}
+    >
       <HeaderBar
         large={phase === 'onboarding'}
         showActions={phase !== 'onboarding' && phase !== 'celebration'}
@@ -864,13 +872,13 @@ function App() {
                     {/* Phase-specific commands */}
                     <p className="mb-1 font-semibold text-[var(--text-main)]">Commands</p>
                     {phase === 'concept-selection' && (
-                      <p className="overflow-x-auto whitespace-nowrap">Test [concept name], Concept list, End session</p>
+                      <p className="whitespace-normal break-words text-[14px] leading-relaxed">Test [concept name], Concept list, Go Back, End session</p>
                     )}
                     {phase === 'concept' && (
-                      <p className="overflow-x-auto whitespace-nowrap">Ready, Read concept, Go back, Concept list, Finish test (+ 4s silence), End session</p>
+                      <p className="whitespace-normal break-words text-[14px] leading-relaxed">Ready, Read concept, Go back, Finish test, End session</p>
                     )}
                     {phase === 'feedback' && (
-                      <p className="overflow-x-auto whitespace-nowrap">Again, Concept list, End session</p>
+                      <p className="whitespace-normal break-words text-[14px] leading-relaxed">Again, Concept list, Go Back, End session,</p>
                     )}
                   </div>
                 )}
