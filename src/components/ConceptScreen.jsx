@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PulsatingButton from './PulsatingButton';
 
-function ConceptScreen({ concept, onComplete }) {
+function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopRecordingSignal = 0, isVoiceModeOn = false }) {
   const COUNTDOWN_SECS = 3;
   const RECORD_SECS = 60;
   const ARMING_MS = 800;
@@ -13,9 +13,15 @@ function ConceptScreen({ concept, onComplete }) {
   const [mode, setMode] = useState('idle'); // 'idle' | 'countdown' | 'arming' | 'recording'
   const [countdown, setCountdown] = useState(COUNTDOWN_SECS);
   const [recordTime, setRecordTime] = useState(RECORD_SECS);
+  const [audioBars, setAudioBars] = useState(() => Array(18).fill(0.06));
 
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const analyserRef = useRef(null);
+  const audioContextRef = useRef(null);
+  const animationFrameRef = useRef(null);
+  const lastStartSignalRef = useRef(startRecordingSignal);
+  const lastStopSignalRef = useRef(stopRecordingSignal);
 
   useEffect(() => {
     if (mode !== 'countdown') return;
@@ -54,6 +60,34 @@ function ConceptScreen({ concept, onComplete }) {
         recorder.ondataavailable = (e) => {
           if (e.data.size > 0) audioChunksRef.current.push(e.data);
         };
+
+        // Drive a lightweight visualizer from live mic input while recording.
+        const audioContext = new window.AudioContext();
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 256;
+        analyser.smoothingTimeConstant = 0.82;
+        const source = audioContext.createMediaStreamSource(s);
+        source.connect(analyser);
+
+        audioContextRef.current = audioContext;
+        analyserRef.current = analyser;
+
+        const freqData = new Uint8Array(analyser.frequencyBinCount);
+        const barCount = 18;
+        const tick = () => {
+          const a = analyserRef.current;
+          if (!a) return;
+          a.getByteFrequencyData(freqData);
+          const nextBars = Array.from({ length: barCount }, (_, i) => {
+            const idx = Math.floor((i / barCount) * freqData.length);
+            const value = freqData[idx] / 255;
+            return Math.max(0.06, value);
+          });
+          setAudioBars(nextBars);
+          animationFrameRef.current = requestAnimationFrame(tick);
+        };
+        tick();
+
         recorder.start();
       })
       .catch((err) => {
@@ -61,6 +95,16 @@ function ConceptScreen({ concept, onComplete }) {
       });
 
     return () => {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      analyserRef.current = null;
+      if (audioContextRef.current) {
+        audioContextRef.current.close();
+        audioContextRef.current = null;
+      }
+      setAudioBars(Array(18).fill(0.06));
       stream?.getTracks().forEach((t) => t.stop());
     };
   }, [mode]);
@@ -96,6 +140,21 @@ function ConceptScreen({ concept, onComplete }) {
       finishRecording();
     }
   };
+
+  useEffect(() => {
+    if (startRecordingSignal === lastStartSignalRef.current) return;
+    lastStartSignalRef.current = startRecordingSignal;
+    if (mode !== 'idle') return;
+    setCountdown(COUNTDOWN_SECS);
+    setMode('countdown');
+  }, [startRecordingSignal]);
+
+  useEffect(() => {
+    if (stopRecordingSignal === lastStopSignalRef.current) return;
+    lastStopSignalRef.current = stopRecordingSignal;
+    if (mode !== 'recording') return;
+    finishRecording();
+  }, [stopRecordingSignal, mode, finishRecording]);
 
   const progress =
     mode === 'recording'
@@ -229,6 +288,22 @@ function ConceptScreen({ concept, onComplete }) {
       <p className={`h-5 text-sm font-semibold tracking-[0.15em] ${isRecording ? 'text-yellow-400' : 'text-transparent'}`}>
         {timerLabel}
       </p>
+
+      {isRecording && isVoiceModeOn && (
+        <p className="-mt-3 text-xs text-[var(--text-soft)]">Say &ldquo;Finish Test&rdquo; to stop</p>
+      )}
+
+      {isRecording && (
+        <div className="flex h-10 w-full max-w-xs items-end justify-center gap-1">
+          {audioBars.map((level, i) => (
+            <span
+              key={i}
+              className="w-1 rounded-full bg-cyan-400/90 transition-[height] duration-75"
+              style={{ height: `${6 + level * 28}px` }}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

@@ -2,12 +2,13 @@ import os
 import io
 import re
 import json
+import httpx
 from duckduckgo_search import DDGS
 
 import fitz  # PyMuPDF
 from docx import Document
 from dotenv import load_dotenv
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Response, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
@@ -15,6 +16,8 @@ from groq import Groq
 load_dotenv(override=True)
 
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
+ELEVENLABS_API_KEY = os.getenv("ELEVENLABS_API_KEY", "").strip()
+ELEVENLABS_VOICE_ID = os.getenv("ELEVENLABS_VOICE_ID", "EXAVITQu4vr4xnSDxMaL").strip()
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 # Groq client — used for both LLM (Llama 3) and STT (Whisper)
@@ -136,21 +139,75 @@ def clean_json_response(raw: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Helpers — STT via Groq Whisper
+# Helpers — STT via Groq Whisper (fallback) and ElevenLabs Scribe
 # ---------------------------------------------------------------------------
 
 def transcribe_audio_groq(audio_bytes: bytes, filename: str) -> str:
     """Transcribe audio using Groq-hosted Whisper large-v3."""
-    # Groq expects a file-like object with a name attribute
     audio_file = io.BytesIO(audio_bytes)
     audio_file.name = filename
-
     result = groq_client.audio.transcriptions.create(
         file=audio_file,
         model=STT_MODEL,
         language="en",
     )
     return result.text.strip()
+
+
+def transcribe_audio_elevenlabs(audio_bytes: bytes, filename: str) -> str:
+    """Transcribe audio using ElevenLabs Speech-to-Text (Scribe model)."""
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured.")
+
+    url = "https://api.elevenlabs.io/v1/speech-to-text"
+    headers = {"xi-api-key": ELEVENLABS_API_KEY}
+    files = {"file": (filename, audio_bytes, "audio/webm")}
+    data = {"model_id": "scribe_v1"}
+
+    try:
+        with httpx.Client(timeout=30) as client:
+            resp = client.post(url, headers=headers, files=files, data=data)
+        if resp.status_code != 200:
+            raise HTTPException(status_code=502, detail=f"ElevenLabs STT {resp.status_code}: {resp.text[:300]}")
+        result = resp.json()
+        return result.get("text", "").strip()
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs STT failed: {str(exc)[:200]}") from exc
+
+
+def synthesize_speech_elevenlabs(text: str) -> bytes:
+    """Synthesize speech audio bytes using ElevenLabs TTS."""
+    if not ELEVENLABS_API_KEY:
+        raise HTTPException(status_code=503, detail="ELEVENLABS_API_KEY not configured.")
+
+    url = f"https://api.elevenlabs.io/v1/text-to-speech/{ELEVENLABS_VOICE_ID}"
+    payload = {
+        "text": text,
+        "model_id": "eleven_multilingual_v2",
+        "voice_settings": {
+            "stability": 0.45,
+            "similarity_boost": 0.8,
+        },
+    }
+    headers = {
+        "xi-api-key": ELEVENLABS_API_KEY,
+        "accept": "audio/mpeg",
+        "content-type": "application/json",
+    }
+
+    try:
+        with httpx.Client(timeout=25) as client:
+            resp = client.post(url, json=payload, headers=headers)
+        if resp.status_code != 200:
+            detail = resp.text[:300]
+            raise HTTPException(status_code=502, detail=f"ElevenLabs HTTP {resp.status_code}: {detail}")
+        return resp.content
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=502, detail=f"ElevenLabs request failed: {str(exc)[:200]}") from exc
 
 
 # ---------------------------------------------------------------------------
@@ -281,15 +338,20 @@ async def analyze_explanation(
     if not groq_client:
         raise HTTPException(status_code=503, detail="GROQ_API_KEY not configured.")
 
-    # Step 1 — STT: transcribe audio if provided
+    # Step 1 — STT: transcribe audio via ElevenLabs Scribe
     final_transcript = transcript
     if audio:
         audio_bytes = await audio.read()
         if audio_bytes:
             try:
-                final_transcript = transcribe_audio_groq(audio_bytes, audio.filename or "recording.webm")
-            except Exception as exc:
-                raise HTTPException(status_code=502, detail=f"STT error: {str(exc)[:200]}") from exc
+                final_transcript = transcribe_audio_elevenlabs(audio_bytes, audio.filename or "recording.webm")
+            except Exception:
+                # Fall back to Groq Whisper if ElevenLabs STT fails
+                try:
+                    if groq_client:
+                        final_transcript = transcribe_audio_groq(audio_bytes, audio.filename or "recording.webm")
+                except Exception as exc2:
+                    raise HTTPException(status_code=502, detail=f"STT error: {str(exc2)[:200]}") from exc2
 
     if not final_transcript:
         final_transcript = "(no speech detected)"
@@ -346,6 +408,10 @@ async def analyze_explanation(
 
 class ChatRequest(BaseModel):
     message: str
+
+
+class TTSRequest(BaseModel):
+    text: str
 
 
 @app.post("/api/chat")
@@ -405,6 +471,21 @@ async def chat(req: ChatRequest):
         return {"response": answer}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"AI error: {str(exc)[:200]}") from exc
+
+
+# ---------------------------------------------------------------------------
+# Endpoint: POST /api/tts-elevenlabs
+# ---------------------------------------------------------------------------
+
+@app.post("/api/tts-elevenlabs")
+async def tts_elevenlabs(req: TTSRequest):
+    """Return spoken audio (MP3) for a text prompt using ElevenLabs."""
+    text = (req.text or "").strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="Text is required for TTS.")
+
+    audio_bytes = synthesize_speech_elevenlabs(text)
+    return Response(content=audio_bytes, media_type="audio/mpeg")
 
 
 

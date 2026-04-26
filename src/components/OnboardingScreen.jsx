@@ -38,14 +38,16 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial, is
         </p>
       </button>
 
-      <button
-        type="button"
-        onClick={onGenerateFromMaterial}
-        disabled={!fileName || isGenerating}
-        className="w-full max-w-md rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isGenerating ? 'Extracting Concepts…' : 'Generate Concepts'}
-      </button>
+      {fileName && (
+        <button
+          type="button"
+          onClick={onGenerateFromMaterial}
+          disabled={isGenerating}
+          className="btn-slide-up w-full max-w-md rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isGenerating ? 'Extracting Concepts…' : 'Generate Concepts'}
+        </button>
+      )}
     </div>
   );
 }

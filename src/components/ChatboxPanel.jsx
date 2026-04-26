@@ -106,14 +106,16 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
         </button>
       </div>
 
-      <button
-        type="button"
-        onClick={() => onGenerateConceptsFromChat(messages)}
-        disabled={isLoading || !hasConversation}
-        className="mt-2 w-full rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        Generate Concepts
-      </button>
+      {hasConversation && (
+        <button
+          type="button"
+          onClick={() => onGenerateConceptsFromChat(messages)}
+          disabled={isLoading}
+          className="btn-slide-up mt-2 w-full rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          Generate Concepts
+        </button>
+      )}
     </aside>
   );
 }
