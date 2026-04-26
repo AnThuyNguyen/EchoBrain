@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import PulsatingButton from './PulsatingButton';
 
 function ConceptScreen({ concept, onComplete }) {
   const COUNTDOWN_SECS = 3;
@@ -60,7 +61,7 @@ function ConceptScreen({ concept, onComplete }) {
   const isRecording = mode === 'recording';
   const isArming = mode === 'arming';
   const buttonBase =
-    'flex h-28 w-28 items-center justify-center rounded-full transition focus-visible:outline-none focus-visible:ring-4 active:scale-95';
+    'flex h-28 w-28 items-center justify-center rounded-full transition-[background-color,transform,box-shadow] duration-700 ease-out focus-visible:outline-none focus-visible:ring-4 active:scale-95';
   const buttonColor = isRecording
     ? 'bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-400'
     : 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-400';
@@ -87,7 +88,7 @@ function ConceptScreen({ concept, onComplete }) {
       </p>
 
       <h1 className="text-balance text-4xl font-bold leading-tight sm:text-5xl">
-        {concept}
+        {concept.name}
       </h1>
 
       <div className="relative flex h-44 w-44 items-center justify-center">
@@ -117,32 +118,44 @@ function ConceptScreen({ concept, onComplete }) {
           />
         </svg>
 
-        <button
-          type="button"
-          onClick={handleClick}
-          disabled={mode === 'countdown' || isArming}
-          className={`${buttonBase} ${buttonColor} ${mode === 'idle' ? 'hover:scale-105' : ''} z-10`}
-          aria-label={
-            isRecording
-              ? 'Stop Recording'
-              : mode === 'countdown'
-              ? `Starting in ${countdown}`
-              : isArming
-              ? 'Starting Recording'
-              : 'Start Test'
-          }
-        >
-          {mode === 'countdown' ? (
-            <span className="text-4xl font-bold text-white">{countdown}</span>
-          ) : isRecording ? (
-            <span className="text-lg font-bold tracking-widest text-white">FINISH</span>
-          ) : isArming ? (
-            <span className="text-xs font-semibold tracking-[0.2em] text-white">...</span>
-          ) : null}
-        </button>
+        {mode === 'idle' ? (
+          <PulsatingButton
+            type="button"
+            onClick={handleClick}
+            variant="ripple"
+            distance="14px"
+            duration="1.6s"
+            pulseColor="rgba(239, 68, 68, 0.55)"
+            className={`${buttonBase} ${buttonColor} hover:scale-105 z-10`}
+            aria-label="Start Test"
+          />
+        ) : (
+          <button
+            type="button"
+            onClick={handleClick}
+            disabled={mode === 'countdown' || isArming}
+            className={`${buttonBase} ${buttonColor} z-10`}
+            aria-label={
+              isRecording
+                ? 'Stop Recording'
+                : mode === 'countdown'
+                ? `Starting in ${countdown}`
+                : isArming
+                ? 'Starting Recording'
+                : 'Start Test'
+            }
+          >
+            {mode === 'countdown' ? (
+              <span className="text-4xl font-bold text-white">{countdown}</span>
+            ) : isRecording ? (
+              <span className="text-lg font-bold tracking-widest text-white">FINISH</span>
+            ) : isArming ? (
+              <span className="text-xs font-semibold tracking-[0.2em] text-white">...</span>
+            ) : null}
+          </button>
+        )}
       </div>
-
-      <p className="h-5 text-sm font-semibold tracking-[0.15em] text-yellow-400">
+      <p className={`h-5 text-sm font-semibold tracking-[0.15em] ${isRecording ? 'text-yellow-400' : 'text-transparent'}`}>
         {timerLabel}
       </p>
     </div>

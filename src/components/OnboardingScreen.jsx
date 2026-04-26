@@ -13,8 +13,7 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
   };
 
   return (
-    <>
-      <div className="flex flex-col items-center gap-8 text-center">
+    <div className="flex flex-col items-center gap-8 text-center">
       <p className="max-w-xl text-base leading-relaxed text-[var(--text-soft)]">
         Upload study material or use the AI chatbox to generate concepts.
       </p>
@@ -46,7 +45,6 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
           Generate Concepts
         </button>
       </div>
-    </>
   );
 }
 
