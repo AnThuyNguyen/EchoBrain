@@ -19,14 +19,40 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
   const audioChunksRef = useRef([]);
   const analyserRef = useRef(null);
   const audioContextRef = useRef(null);
+  const countdownBeepContextRef = useRef(null);
   const animationFrameRef = useRef(null);
   const lastStartSignalRef = useRef(startRecordingSignal);
   const lastStopSignalRef = useRef(stopRecordingSignal);
   const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
-  useEffect(() => {
-    onCompleteRef.current = onComplete;
-  }, [onComplete]);
+  const playCountdownBeep = useCallback(() => {
+    try {
+      const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      if (!countdownBeepContextRef.current) {
+        countdownBeepContextRef.current = new AudioContextClass();
+      }
+
+      const ctx = countdownBeepContextRef.current;
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(880, ctx.currentTime);
+      gain.gain.setValueAtTime(0.0001, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(0.09, ctx.currentTime + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.14);
+
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.15);
+    } catch {
+      // Ignore beep failures in browsers that block autoplay without a user gesture.
+    }
+  }, []);
 
   useEffect(() => {
     if (mode !== 'countdown') return;
@@ -34,9 +60,10 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
       setMode('arming');
       return;
     }
+    playCountdownBeep();
     const t = setTimeout(() => setCountdown((c) => c - 1), 1000);
     return () => clearTimeout(t);
-  }, [mode, countdown]);
+  }, [mode, countdown, playCountdownBeep]);
 
   useEffect(() => {
     if (mode !== 'arming') return;
@@ -118,6 +145,15 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
     };
   }, [mode]);
 
+  useEffect(() => {
+    return () => {
+      if (countdownBeepContextRef.current) {
+        countdownBeepContextRef.current.close();
+        countdownBeepContextRef.current = null;
+      }
+    };
+  }, []);
+
   const finishRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === 'inactive') {
@@ -156,7 +192,7 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
     if (mode !== 'idle') return;
     setCountdown(COUNTDOWN_SECS);
     setMode('countdown');
-  }, [startRecordingSignal, mode]);
+  }, [startRecordingSignal]);
 
   useEffect(() => {
     if (stopRecordingSignal === lastStopSignalRef.current) return;

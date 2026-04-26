@@ -46,6 +46,9 @@ function App() {
   const speechAbortRef = useRef(null);
   const spokenFeedbackKeyRef = useRef('');
   const spokenPromptsRef = useRef(new Set());
+  const aiFeedbackRef = useRef(aiFeedback);
+  const transcriptRef = useRef(transcript);
+  const isAnalyzingRef = useRef(isAnalyzing);
 
   const studyFileName = studyFile?.name || '';
   const currentConcept = useMemo(() => concepts[conceptIndex], [concepts, conceptIndex]);
@@ -69,6 +72,18 @@ function App() {
   useEffect(() => {
     conceptIndexRef.current = conceptIndex;
   }, [conceptIndex]);
+
+  useEffect(() => {
+    aiFeedbackRef.current = aiFeedback;
+  }, [aiFeedback]);
+
+  useEffect(() => {
+    transcriptRef.current = transcript;
+  }, [transcript]);
+
+  useEffect(() => {
+    isAnalyzingRef.current = isAnalyzing;
+  }, [isAnalyzing]);
 
   useEffect(() => {
     if (phase !== 'celebration') {
@@ -308,20 +323,23 @@ function App() {
       speechAudioRef.current = audio;
       speechAbortRef.current = null;
 
-      audio.onended = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (speechAudioRef.current === audio) {
-          speechAudioRef.current = null;
-        }
-      };
-      audio.onerror = () => {
-        URL.revokeObjectURL(audioUrl);
-        if (speechAudioRef.current === audio) {
-          speechAudioRef.current = null;
-        }
-      };
-
-      await audio.play();
+      await new Promise((resolve) => {
+        audio.onended = () => {
+          URL.revokeObjectURL(audioUrl);
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          resolve();
+        };
+        audio.onerror = () => {
+          URL.revokeObjectURL(audioUrl);
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          resolve();
+        };
+        audio.play().catch(resolve);
+      });
     } catch {
       speechAbortRef.current = null;
     }
@@ -407,7 +425,7 @@ function App() {
     }
 
     finishPendingRef.current = true;
-    setVoiceCommandNote('Finish test heard. Stay silent for 4s to confirm.');
+    setVoiceCommandNote('Finish test heard. Stay silent for 2s to confirm.');
 
     finishTimeoutRef.current = setTimeout(() => {
       finishPendingRef.current = false;
@@ -577,7 +595,42 @@ function App() {
     setVoiceLiveTranscript('Listening...');
     setVoiceCommandNote('');
     spokenPromptsRef.current.add('welcome');
-    void speakVoicePrompt('Welcome to voice mode. Say test, then a concept name to begin. Say concept list to hear all topics. Say end session to stop the study.', { force: true });
+
+    // Pre-guard page-specific keys so useEffects don't double-fire while welcome plays
+    const voiceOnPhase = phaseRef.current;
+    const voiceOnIndex = conceptIndexRef.current;
+    if (voiceOnPhase === 'concept' && conceptsRef.current[voiceOnIndex]?.name) {
+      spokenPromptsRef.current.add(`ready-${voiceOnIndex}`);
+    }
+    if (voiceOnPhase === 'feedback') {
+      const fb = aiFeedbackRef.current;
+      const tx = transcriptRef.current;
+      if (fb && !isAnalyzingRef.current) {
+        spokenFeedbackKeyRef.current = `${voiceOnIndex}::${tx || ''}::${fb?.summary || ''}`;
+      }
+    }
+
+    // Speak welcome, then immediately follow with the current page's prompt
+    (async () => {
+      await speakVoicePrompt('Welcome to voice mode. Say end session to stop the study or go back to previous page.', { force: true });
+      const currentPhase = phaseRef.current;
+      const currentIndex = conceptIndexRef.current;
+      if (currentPhase === 'concept' && conceptsRef.current[currentIndex]?.name) {
+        void speakVoicePrompt('Say Ready when you are ready to record and finish test to end early. Or, Say go back to return to concept list.', { force: true });
+      } else if (currentPhase === 'feedback') {
+        const fb = aiFeedbackRef.current;
+        const tx = transcriptRef.current;
+        if (fb && !isAnalyzingRef.current) {
+          const feedbackKey = `${currentIndex}::${tx || ''}::${fb?.summary || ''}`;
+          spokenFeedbackKeyRef.current = feedbackKey;
+          const summaryText = fb.summary || 'Feedback is ready.';
+          const feedbackSpeech = `${summaryText} Try again or with another topic.`.replace(/\s+/g, ' ').trim();
+          void speakVoicePrompt(feedbackSpeech, { force: true });
+        }
+      } else if (currentPhase === 'concept-selection') {
+        void speakVoicePrompt('Say test, then a concept name to test your memory on it. Say concept list to hear all topics.', { force: true });
+      }
+    })();
   };
 
   useEffect(() => {
