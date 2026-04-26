@@ -33,15 +33,19 @@ function App() {
   const [voiceStopSignal, setVoiceStopSignal] = useState(0);
   const [voiceLiveTranscript, setVoiceLiveTranscript] = useState('');
   const [voiceCommandNote, setVoiceCommandNote] = useState('');
+  const [voiceAudioBars, setVoiceAudioBars] = useState(() => Array(18).fill(0.04));
+  const [isRecordingVoice, setIsRecordingVoice] = useState(false);
 
   const recognitionRef = useRef(null);
   const finishPendingRef = useRef(false);
   const finishTimeoutRef = useRef(null);
   const phaseRef = useRef(phase);
   const conceptsRef = useRef(concepts);
+  const conceptIndexRef = useRef(conceptIndex);
   const speechAudioRef = useRef(null);
   const speechAbortRef = useRef(null);
   const spokenFeedbackKeyRef = useRef('');
+  const spokenPromptsRef = useRef(new Set());
 
   const studyFileName = studyFile?.name || '';
   const currentConcept = useMemo(() => concepts[conceptIndex], [concepts, conceptIndex]);
@@ -61,6 +65,10 @@ function App() {
   useEffect(() => {
     conceptsRef.current = concepts;
   }, [concepts]);
+
+  useEffect(() => {
+    conceptIndexRef.current = conceptIndex;
+  }, [conceptIndex]);
 
   useEffect(() => {
     if (phase !== 'celebration') {
@@ -232,6 +240,7 @@ function App() {
       speechAudioRef.current = null;
     }
     spokenFeedbackKeyRef.current = '';
+    spokenPromptsRef.current = new Set();
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
@@ -259,15 +268,18 @@ function App() {
     if (!text?.trim()) return;
     if (!force && !isVoiceModeOn) return;
 
-    if (speechAbortRef.current) {
-      speechAbortRef.current.abort();
-      speechAbortRef.current = null;
-    }
     if (speechAudioRef.current) {
       speechAudioRef.current.pause();
       speechAudioRef.current.currentTime = 0;
       speechAudioRef.current = null;
     }
+    if (speechAbortRef.current) {
+      speechAbortRef.current.abort();
+      speechAbortRef.current = null;
+    }
+
+    // Small delay to ensure clean cutoff
+    await new Promise((r) => setTimeout(r, 50));
 
     const controller = new AbortController();
     speechAbortRef.current = controller;
@@ -350,6 +362,11 @@ function App() {
       return { type: 'end-session' };
     }
 
+    const conceptListPattern = /\b(concept|concepts)\s+list\b/i;
+    if (conceptListPattern.test(text)) {
+      return { type: 'concept-list' };
+    }
+
     const testPattern = /\btest\s+([a-z0-9'\-\s]+)/i;
     const testMatch = text.match(testPattern);
     if (testMatch?.[1]) {
@@ -364,6 +381,16 @@ function App() {
     const againPattern = /\b(again|retry|one more time)\b/;
     if (againPattern.test(text)) {
       return { type: 'again' };
+    }
+
+    const readConceptPattern = /\bread\s+(?:the\s+)?concept\b/i;
+    if (readConceptPattern.test(text)) {
+      return { type: 'read-concept' };
+    }
+
+    const goBackPattern = /\bgo\s+back\b/i;
+    if (goBackPattern.test(text)) {
+      return { type: 'go-back' };
     }
 
     return null;
@@ -421,9 +448,43 @@ function App() {
       return;
     }
 
+    if (command.type === 'concept-list') {
+      const names = conceptsRef.current.map((c) => c.name);
+      if (names.length === 0) {
+        setVoiceCommandNote('No concepts loaded');
+        return;
+      }
+      setVoiceCommandNote('Reading concept list...');
+      const speech = `These are the concepts for this study session: ${names.join(', ')}.`;
+      void speakVoicePrompt(speech, { force: true });
+      return;
+    }
+
     if (command.type === 'again') {
       setVoiceCommandNote('Command recognized: Again');
       handleAgain();
+      return;
+    }
+
+    if (command.type === 'read-concept') {
+      if (phaseRef.current !== 'concept') {
+        setVoiceCommandNote('Read concept: open a concept first');
+        return;
+      }
+      const concept = conceptsRef.current[conceptIndexRef.current];
+      if (!concept) {
+        setVoiceCommandNote('Read concept: no concept found');
+        return;
+      }
+      setVoiceCommandNote('Reading concept...');
+      const conceptText = `${concept.name}. ${concept.description}`;
+      void speakVoicePrompt(conceptText, { force: true });
+      return;
+    }
+
+    if (command.type === 'go-back') {
+      setVoiceCommandNote('Command recognized: Go back');
+      handleGoBack();
       return;
     }
 
@@ -511,16 +572,21 @@ function App() {
 
     recognition.start();
     recognitionRef.current = recognition;
+    spokenPromptsRef.current = new Set();
     setIsVoiceModeOn(true);
     setVoiceLiveTranscript('Listening...');
     setVoiceCommandNote('');
-    void speakVoicePrompt('Welcome to voice mode, say test along with a concept to test your memory.', { force: true });
+    spokenPromptsRef.current.add('welcome');
+    void speakVoicePrompt('Welcome to voice mode. Say test, then a concept name to begin. Say concept list to hear all topics. Say end session to stop the study.', { force: true });
   };
 
   useEffect(() => {
     if (phase !== 'concept' || !isVoiceModeOn) return;
     if (!currentConcept?.name) return;
-    void speakVoicePrompt('Say Ready when you are ready to record, and finish test to end early.');
+    const key = `ready-${conceptIndex}`;
+    if (spokenPromptsRef.current.has(key)) return;
+    spokenPromptsRef.current.add(key);
+    void speakVoicePrompt('Say Ready when you are ready to record. Say go back to concept list, or finish test to end early.');
   }, [phase, conceptIndex, isVoiceModeOn]);
 
   useEffect(() => {
@@ -534,17 +600,9 @@ function App() {
     if (spokenFeedbackKeyRef.current === feedbackKey) return;
     spokenFeedbackKeyRef.current = feedbackKey;
 
-    const correctCount = aiFeedback.correctPoints?.length ?? 0;
-    const missingCount = aiFeedback.missingPoints?.length ?? 0;
     const summaryText = aiFeedback.summary || 'Feedback is ready.';
 
-    const coverageLine = correctCount > 0 && missingCount > 0
-      ? `You got ${correctCount} thing${correctCount !== 1 ? 's' : ''} right, with ${missingCount} area${missingCount !== 1 ? 's' : ''} to improve.`
-      : correctCount > 0
-      ? `You got all ${correctCount} key point${correctCount !== 1 ? 's' : ''} right!`
-      : 'There are some areas to work on.';
-
-    const feedbackSpeech = `${summaryText} ${coverageLine} Say again to redo the test, or pick another topic with Test concept name.`
+    const feedbackSpeech = `${summaryText} Try again or with another topic.`
       .replace(/\s+/g, ' ')
       .trim();
 
@@ -592,6 +650,15 @@ function App() {
               <div className="fixed bottom-4 right-4 z-50 flex flex-col items-end gap-2">
                 {isVoiceModeOn && (
                   <div className="w-52 rounded-xl border border-gray-700 bg-[#1b1b1b]/95 p-3 text-[11px] text-[var(--text-soft)] shadow-2xl backdrop-blur">
+                    <div className="mb-2 flex h-8 w-full items-end justify-center gap-[2px]">
+                      {voiceAudioBars.map((level, i) => (
+                        <span
+                          key={i}
+                          className="w-1 rounded-full bg-cyan-400/80 transition-[height] duration-75"
+                          style={{ height: `${4 + level * 24}px` }}
+                        />
+                      ))}
+                    </div>
                     {/* Live transcript at top */}
                     <div className="mb-2 rounded-md border border-gray-700 bg-[#111] p-2">
                       <p className="mb-1 text-[10px] uppercase tracking-wider text-gray-400">Listening</p>
@@ -605,12 +672,16 @@ function App() {
                     {phase === 'concept-selection' && (
                       <>
                         <p>Test [concept name]</p>
+                        <p>Concept list</p>
                         <p>End session</p>
                       </>
                     )}
                     {phase === 'concept' && (
                       <>
                         <p>Ready</p>
+                        <p>Read concept</p>
+                        <p>Go back</p>
+                        <p>Concept list</p>
                         <p>Finish Test <span className="text-gray-500">(+ 4s silence)</span></p>
                         <p>End session</p>
                       </>
@@ -618,6 +689,7 @@ function App() {
                     {phase === 'feedback' && (
                       <>
                         <p>Again</p>
+                        <p>Concept list</p>
                         <p>End session</p>
                       </>
                     )}
@@ -663,6 +735,8 @@ function App() {
                 startRecordingSignal={voiceStartSignal}
                 stopRecordingSignal={voiceStopSignal}
                 isVoiceModeOn={isVoiceModeOn}
+                onAudioBars={setVoiceAudioBars}
+                onRecordingStateChange={setIsRecordingVoice}
               />
             </div>
           )}

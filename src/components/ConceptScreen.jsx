@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import PulsatingButton from './PulsatingButton';
 
-function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopRecordingSignal = 0, isVoiceModeOn = false }) {
+function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopRecordingSignal = 0, isVoiceModeOn = false, onAudioBars, onRecordingStateChange }) {
   const COUNTDOWN_SECS = 3;
   const RECORD_SECS = 60;
   const ARMING_MS = 800;
@@ -22,6 +22,11 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
   const animationFrameRef = useRef(null);
   const lastStartSignalRef = useRef(startRecordingSignal);
   const lastStopSignalRef = useRef(stopRecordingSignal);
+  const onCompleteRef = useRef(onComplete);
+
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
 
   useEffect(() => {
     if (mode !== 'countdown') return;
@@ -64,8 +69,10 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
         // Drive a lightweight visualizer from live mic input while recording.
         const audioContext = new window.AudioContext();
         const analyser = audioContext.createAnalyser();
-        analyser.fftSize = 256;
-        analyser.smoothingTimeConstant = 0.82;
+        analyser.fftSize = 64;
+        analyser.smoothingTimeConstant = 0.55;
+        analyser.minDecibels = -90;
+        analyser.maxDecibels = -10;
         const source = audioContext.createMediaStreamSource(s);
         source.connect(analyser);
 
@@ -80,10 +87,11 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
           a.getByteFrequencyData(freqData);
           const nextBars = Array.from({ length: barCount }, (_, i) => {
             const idx = Math.floor((i / barCount) * freqData.length);
-            const value = freqData[idx] / 255;
-            return Math.max(0.06, value);
+            const value = Math.min(1, (freqData[idx] / 255) * 2.8);
+            return Math.max(0.04, value);
           });
           setAudioBars(nextBars);
+          onAudioBars?.(nextBars);
           animationFrameRef.current = requestAnimationFrame(tick);
         };
         tick();
@@ -104,7 +112,8 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
         audioContextRef.current.close();
         audioContextRef.current = null;
       }
-      setAudioBars(Array(18).fill(0.06));
+      setAudioBars(Array(18).fill(0.04));
+      onAudioBars?.(Array(18).fill(0.04));
       stream?.getTracks().forEach((t) => t.stop());
     };
   }, [mode]);
@@ -112,15 +121,15 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
   const finishRecording = useCallback(() => {
     const recorder = mediaRecorderRef.current;
     if (!recorder || recorder.state === 'inactive') {
-      onComplete(null);
+      onCompleteRef.current?.(null);
       return;
     }
     recorder.onstop = () => {
       const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-      onComplete(blob);
+      onCompleteRef.current?.(blob);
     };
     recorder.stop();
-  }, [onComplete]);
+  }, []);
 
   useEffect(() => {
     if (mode !== 'recording') return;
@@ -147,7 +156,7 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
     if (mode !== 'idle') return;
     setCountdown(COUNTDOWN_SECS);
     setMode('countdown');
-  }, [startRecordingSignal]);
+  }, [startRecordingSignal, mode]);
 
   useEffect(() => {
     if (stopRecordingSignal === lastStopSignalRef.current) return;
@@ -170,6 +179,10 @@ function ConceptScreen({ concept, onComplete, startRecordingSignal = 0, stopReco
   const buttonColor = isRecording
     ? 'bg-blue-600 hover:bg-blue-500 focus-visible:ring-blue-400'
     : 'bg-red-600 hover:bg-red-500 focus-visible:ring-red-400';
+
+  useEffect(() => {
+    onRecordingStateChange?.(isRecording);
+  }, [isRecording, onRecordingStateChange]);
 
   const formatTimer = (totalSeconds) => {
     const mins = Math.floor(totalSeconds / 60);
