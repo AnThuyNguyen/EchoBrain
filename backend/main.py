@@ -10,9 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from groq import Groq
 
-load_dotenv()
+load_dotenv(override=True)
 
-GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "").strip()
 MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 # Groq client — used for both LLM (Llama 3) and STT (Whisper)
