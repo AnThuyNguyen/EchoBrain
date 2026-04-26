@@ -62,10 +62,10 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
   };
 
   return (
-    <aside className="flex h-[32rem] w-full flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-5 shadow-2xl sm:p-6 lg:h-auto lg:flex-1">
-      <h2 className="mb-4 text-lg font-bold">AI Chatbox</h2>
+    <aside className="flex min-h-[20rem] w-full flex-1 flex-col rounded-3xl border border-gray-700 bg-[var(--panel)] p-3 shadow-2xl sm:p-5 lg:h-auto lg:flex-1">
+      <h2 className="mb-2 text-base font-bold sm:mb-3 sm:text-lg">AI Chatbox</h2>
 
-      <div className="mb-4 flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto rounded-2xl bg-[#1a1a1a] p-4">
+      <div className="mb-3 flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto rounded-2xl bg-[#1a1a1a] p-3">
         {messages.map((message) => (
           <div
             key={message.id}
@@ -83,33 +83,36 @@ function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
       <label htmlFor="chatbox-input" className="sr-only">
         Ask the AI
       </label>
-      <textarea
-        id="chatbox-input"
-        value={draft}
-        onChange={(event) => setDraft(event.target.value)}
-        onKeyDown={handleKeyDown}
-        disabled={isLoading}
-        rows={3}
-        placeholder="Ask the AI about this concept..."
-        className="w-full resize-none rounded-xl border border-gray-600 bg-[#2a2a2a] p-3 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2 disabled:opacity-50"
-      />
+      <div className="mt-1 flex items-center gap-2">
+        <textarea
+          id="chatbox-input"
+          value={draft}
+          onChange={(event) => setDraft(event.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          rows={2}
+          placeholder="Ask the AI about this concept..."
+          className="min-h-[2.75rem] flex-1 resize-none rounded-xl border border-gray-600 bg-[#2a2a2a] p-2.5 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2 disabled:opacity-50"
+        />
 
-      <button
-        type="button"
-        onClick={handleSend}
-        disabled={isLoading || !draft.trim()}
-        className="mt-3 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        {isLoading ? 'Thinking…' : 'Send'}
-      </button>
+        <button
+          type="button"
+          onClick={handleSend}
+          disabled={isLoading || !draft.trim()}
+          aria-label={isLoading ? 'Sending message' : 'Send message'}
+          className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-[var(--accent)] text-xs font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+        >
+          {isLoading ? '...' : '>'}
+        </button>
+      </div>
 
       <button
         type="button"
         onClick={() => onGenerateConceptsFromChat(messages)}
         disabled={isLoading || !hasConversation}
-        className="mt-2 w-full rounded-xl border border-[var(--accent)] px-4 py-3 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-40"
+        className="mt-2 w-full rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Generate Concepts From AI Chat
+        Generate Concepts
       </button>
     </aside>
   );

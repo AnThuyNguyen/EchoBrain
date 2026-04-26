@@ -210,30 +210,16 @@ function App() {
   };
 
   return (
-    <main className="mx-auto flex min-h-screen w-full max-w-6xl flex-col justify-start gap-4 p-4 sm:p-8">
-      <HeaderBar large={phase === 'onboarding'} />
-      <div className={`flex w-full flex-col gap-4 sm:gap-6 ${showChatbox ? 'lg:flex-row lg:items-stretch' : ''}`}>
+    <main className="mx-auto flex min-h-svh w-full max-w-6xl flex-col justify-start gap-3 p-3 sm:gap-4 sm:p-6">
+      <HeaderBar
+        large={phase === 'onboarding'}
+        showActions={phase !== 'onboarding' && phase !== 'celebration'}
+        canGoBack={canGoBack}
+        onGoBack={handleGoBack}
+        onEndSession={handleEndSession}
+      />
+      <div className={`flex w-full flex-col gap-4 sm:gap-6 ${showChatbox ? 'flex-1 lg:flex-row lg:items-stretch' : ''}`}>
         <section className={`w-full rounded-3xl border border-gray-700 bg-[var(--panel)] p-6 shadow-2xl sm:p-5 ${showChatbox ? 'lg:w-[34%] lg:shrink-0' : 'min-h-[34rem] sm:min-h-[38rem]'}`}>
-          {phase !== 'onboarding' && phase !== 'celebration' && (
-            <div className="mb-8 flex flex-wrap items-center justify-end gap-3">
-              <button
-                type="button"
-                onClick={handleGoBack}
-                disabled={!canGoBack}
-                className="rounded-lg border border-[var(--accent)]/35 px-4 py-2 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                Go Back
-              </button>
-              <button
-                type="button"
-                onClick={handleEndSession}
-                className="rounded-lg bg-[var(--warn)] px-4 py-2 text-sm font-semibold text-white transition hover:brightness-95"
-              >
-                End Session
-              </button>
-            </div>
-          )}
-
           {phase === 'onboarding' && (
             <div className="page-enter-pop" key="phase-onboarding">
               <OnboardingScreen

@@ -13,8 +13,8 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial, is
   };
 
   return (
-    <div className="flex flex-col items-center gap-6 text-center">
-      <p className="max-w-xl text-base leading-relaxed text-[var(--text-soft)]">
+    <div className="flex flex-col items-center gap-3 text-center">
+      <p className="text-xs leading-relaxed text-[var(--text-soft)] sm:text-sm">
         Upload study material or use the AI chatbox to generate concepts.
       </p>
 
@@ -30,10 +30,10 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial, is
         type="button"
         onClick={handleUploadClick}
         disabled={isGenerating}
-        className="w-full max-w-md rounded-2xl border-2 border-dashed border-[var(--accent)] px-8 py-4 text-lg font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:opacity-50"
+        className="w-full max-w-md rounded-xl border-2 border-dashed border-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:opacity-50"
       >
         Upload Study Material
-        <p className="rounded-xl bg-gray-800 px-4 py-2 text-sm text-[var(--text-soft)]">
+        <p className="mt-1 rounded-lg bg-gray-800 px-3 py-1 text-xs text-[var(--text-soft)]">
           {fileName || 'No file selected'}
         </p>
       </button>
@@ -42,7 +42,7 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial, is
         type="button"
         onClick={onGenerateFromMaterial}
         disabled={!fileName || isGenerating}
-        className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-4 text-xl font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+        className="w-full max-w-md rounded-xl bg-[var(--accent)] px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
       >
         {isGenerating ? 'Extracting Concepts…' : 'Generate Concepts'}
       </button>
