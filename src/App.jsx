@@ -12,12 +12,8 @@ const defaultConcepts = [
   { name: "Newton's First Law", description: 'An object at rest stays at rest unless acted on by a force.' },
   { name: 'Mitosis', description: 'Cell division producing two genetically identical daughter cells.' },
 ];
-const placeholderGeneratedConcepts = [
-  { name: 'Concept 1', description: 'A brief description generated from your study material.' },
-  { name: 'Placeholder Concept 2', description: 'A brief description generated from your study material.' },
-  { name: 'Place Concept 3', description: 'A brief description generated from your study material.' },
-  { name: 'Holder Concept 4', description: 'A brief description generated from your study material.' },
-];
+
+const API = 'http://localhost:8000';
 
 function App() {
   const CELEBRATION_MS = 1800;
@@ -25,10 +21,14 @@ function App() {
   const [concepts, setConcepts] = useState(defaultConcepts);
   const [conceptIndex, setConceptIndex] = useState(0);
   const [transcript, setTranscript] = useState('');
-  const [studyFileName, setStudyFileName] = useState('');
+  const [aiFeedback, setAiFeedback] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [studyFile, setStudyFile] = useState(null); // actual File object
   const [conceptSourceLabel, setConceptSourceLabel] = useState('None yet');
   const [showChatbox, setShowChatbox] = useState(true);
 
+  const studyFileName = studyFile?.name || '';
   const currentConcept = useMemo(() => concepts[conceptIndex], [concepts, conceptIndex]);
 
   const goBackMap = {
@@ -51,24 +51,60 @@ function App() {
     return () => clearTimeout(timer);
   }, [phase]);
 
-  const handleRecordingComplete = (capturedTranscript) => {
-    setTranscript(capturedTranscript);
+  const handleRecordingComplete = async (audioBlob) => {
     setPhase('celebration');
+    setIsAnalyzing(true);
+    setTranscript('');
+    setAiFeedback(null);
+
+    try {
+      // Send audio blob + concept info as multipart form to /api/analyze
+      // Backend handles STT (Groq Whisper) then LLM feedback (Groq Llama 3)
+      const formData = new FormData();
+      formData.append('concept_name', currentConcept.name);
+      formData.append('concept_definition', currentConcept.description);
+      if (audioBlob) {
+        formData.append('audio', audioBlob, 'recording.webm');
+      }
+
+      const res = await fetch(`${API}/api/analyze`, { method: 'POST', body: formData });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Analysis failed');
+      }
+
+      const data = await res.json();
+      setTranscript(data.transcript || '');
+      setAiFeedback(data.feedback);
+    } catch (err) {
+      console.error('Analysis error:', err);
+      setAiFeedback({
+        correctPoints: [],
+        missingPoints: [],
+        summary: `Could not analyse your explanation: ${err.message}. Please check the backend and try again.`,
+      });
+    } finally {
+      setIsAnalyzing(false);
+    }
   };
 
   const handleAgain = () => {
     setTranscript('');
+    setAiFeedback('');
     setPhase('concept');
   };
 
   const handleSelectConceptFromFeedback = (index) => {
     setConceptIndex(index);
     setTranscript('');
+    setAiFeedback('');
     setPhase('concept');
   };
 
   const handleBackToConceptList = () => {
     setTranscript('');
+    setAiFeedback('');
     setPhase('concept-selection');
   };
 
@@ -77,25 +113,43 @@ function App() {
     setPhase('concept-selection');
   };
 
-  const handleFileSelected = (fileName) => {
-    setStudyFileName(fileName);
+  const handleFileSelected = (file) => {
+    setStudyFile(file);
   };
 
-  const handleGenerateFromMaterial = () => {
-    setConcepts(placeholderGeneratedConcepts);
-    setConceptSourceLabel(
-      studyFileName ? `Study Material (${studyFileName})` : 'Study Material'
-    );
-    setConceptIndex(0);
-    setTranscript('');
-    handleStartSession();
+  const handleGenerateFromMaterial = async () => {
+    if (!studyFile) return;
+    setIsGenerating(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', studyFile);
+      const res = await fetch(`${API}/api/extract-concepts`, { method: 'POST', body: formData });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || 'Failed to extract concepts');
+      }
+      const data = await res.json();
+      setConcepts(data.concepts);
+      setConceptSourceLabel(`Study Material (${studyFileName})`);
+      setConceptIndex(0);
+      setTranscript('');
+      setAiFeedback('');
+      handleStartSession();
+    } catch (err) {
+      console.error('Extract concepts error:', err);
+      alert(`Error: ${err.message}`);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const handleGenerateConceptsFromChat = () => {
-    setConcepts(placeholderGeneratedConcepts);
+    // Chat-based concept generation keeps placeholder for now
+    setConcepts(defaultConcepts);
     setConceptSourceLabel('AI Chatbox');
     setConceptIndex(0);
     setTranscript('');
+    setAiFeedback('');
     handleStartSession();
   };
 
@@ -121,7 +175,8 @@ function App() {
     setPhase('onboarding');
     setConceptIndex(0);
     setTranscript('');
-    setStudyFileName('');
+    setAiFeedback('');
+    setStudyFile(null);
     setConceptSourceLabel('None yet');
     setConcepts(defaultConcepts);
     setShowChatbox(true);
@@ -158,6 +213,7 @@ function App() {
                 fileName={studyFileName}
                 onFileSelected={handleFileSelected}
                 onGenerateFromMaterial={handleGenerateFromMaterial}
+                isGenerating={isGenerating}
               />
             </div>
           )}
@@ -192,6 +248,8 @@ function App() {
               <FeedbackScreen
                 concept={currentConcept}
                 transcript={transcript}
+                aiFeedback={aiFeedback}
+                isAnalyzing={isAnalyzing}
                 onAgain={handleAgain}
                 concepts={concepts}
                 currentConceptIndex={conceptIndex}
@@ -202,7 +260,7 @@ function App() {
           )}
         </section>
 
-        {showChatbox && <ChatboxPanel onGenerateConceptsFromChat={handleGenerateConceptsFromChat} />}
+        {showChatbox && <ChatboxPanel onGenerateConceptsFromChat={handleGenerateConceptsFromChat} apiUrl={API} />}
       </div>
     </main>
   );

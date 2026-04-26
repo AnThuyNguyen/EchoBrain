@@ -1,32 +1,57 @@
 import { useState } from 'react';
 
-function ChatboxPanel({ onGenerateConceptsFromChat }) {
+function ChatboxPanel({ onGenerateConceptsFromChat, apiUrl }) {
   const [messages, setMessages] = useState([
     {
       id: 'welcome',
       role: 'assistant',
-      text: 'Ask me anything about your study material. AI responses are placeholder for now.',
+      text: 'Ask me anything about your study material or learning strategies!',
     },
   ]);
   const [draft, setDraft] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const userMessages = messages.filter((message) => message.role === 'user');
 
-  const handleSend = () => {
+  const handleSend = async () => {
     const prompt = draft.trim();
-    if (!prompt) {
+    if (!prompt || isLoading) {
       return;
     }
 
+    // Add user message
     setMessages((prev) => [
       ...prev,
       { id: crypto.randomUUID(), role: 'user', text: prompt },
-      {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        text: 'Placeholder AI response: this is where EchoBrain coaching will appear.',
-      },
     ]);
     setDraft('');
+    setIsLoading(true);
+
+    try {
+      const res = await fetch(`${apiUrl}/api/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: prompt }),
+      });
+
+      let assistantText = 'Sorry, I could not generate a response. Please try again.';
+      if (res.ok) {
+        const data = await res.json();
+        assistantText = data.response || assistantText;
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'assistant', text: assistantText },
+      ]);
+    } catch (err) {
+      console.error('Chat error:', err);
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: 'assistant', text: 'Error connecting to AI. Please check the backend.' },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleKeyDown = (event) => {
@@ -63,17 +88,19 @@ function ChatboxPanel({ onGenerateConceptsFromChat }) {
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
         onKeyDown={handleKeyDown}
+        disabled={isLoading}
         rows={3}
         placeholder="Ask the AI about this concept..."
-        className="w-full resize-none rounded-xl border border-gray-600 bg-[#2a2a2a] p-3 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2"
+        className="w-full resize-none rounded-xl border border-gray-600 bg-[#2a2a2a] p-3 text-sm text-[var(--text-main)] outline-none ring-[var(--accent)] transition focus:ring-2 disabled:opacity-50"
       />
 
       <button
         type="button"
         onClick={handleSend}
-        className="mt-3 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)]"
+        disabled={isLoading || !draft.trim()}
+        className="mt-3 w-full rounded-xl bg-[var(--accent)] px-4 py-3 text-sm font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
       >
-        Send
+        {isLoading ? 'Thinking…' : 'Send'}
       </button>
 
       <button

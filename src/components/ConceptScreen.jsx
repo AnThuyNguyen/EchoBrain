@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import PulsatingButton from './PulsatingButton';
 
 function ConceptScreen({ concept, onComplete }) {
@@ -13,6 +13,9 @@ function ConceptScreen({ concept, onComplete }) {
   const [mode, setMode] = useState('idle'); // 'idle' | 'countdown' | 'arming' | 'recording'
   const [countdown, setCountdown] = useState(COUNTDOWN_SECS);
   const [recordTime, setRecordTime] = useState(RECORD_SECS);
+
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   useEffect(() => {
     if (mode !== 'countdown') return;
@@ -33,22 +36,64 @@ function ConceptScreen({ concept, onComplete }) {
     return () => clearTimeout(t);
   }, [mode]);
 
+  // Start microphone capture when recording begins
+  useEffect(() => {
+    if (mode !== 'recording') return;
+
+    let stream;
+    navigator.mediaDevices
+      .getUserMedia({ audio: true })
+      .then((s) => {
+        stream = s;
+        audioChunksRef.current = [];
+        const mimeType = MediaRecorder.isTypeSupported('audio/webm;codecs=opus')
+          ? 'audio/webm;codecs=opus'
+          : 'audio/webm';
+        const recorder = new MediaRecorder(s, { mimeType });
+        mediaRecorderRef.current = recorder;
+        recorder.ondataavailable = (e) => {
+          if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+        recorder.start();
+      })
+      .catch((err) => {
+        console.error('Microphone access denied:', err);
+      });
+
+    return () => {
+      stream?.getTracks().forEach((t) => t.stop());
+    };
+  }, [mode]);
+
+  const finishRecording = useCallback(() => {
+    const recorder = mediaRecorderRef.current;
+    if (!recorder || recorder.state === 'inactive') {
+      onComplete(null);
+      return;
+    }
+    recorder.onstop = () => {
+      const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+      onComplete(blob);
+    };
+    recorder.stop();
+  }, [onComplete]);
+
   useEffect(() => {
     if (mode !== 'recording') return;
     if (recordTime <= 0) {
-      onComplete('User explanation here');
+      finishRecording();
       return;
     }
     const t = setTimeout(() => setRecordTime((r) => r - 1), 1000);
     return () => clearTimeout(t);
-  }, [mode, recordTime, onComplete]);
+  }, [mode, recordTime, finishRecording]);
 
   const handleClick = () => {
     if (mode === 'idle') {
       setCountdown(COUNTDOWN_SECS);
       setMode('countdown');
     } else if (mode === 'recording') {
-      onComplete('User explanation here');
+      finishRecording();
     }
   };
 

@@ -1,6 +1,6 @@
 import { useRef } from 'react';
 
-function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) {
+function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial, isGenerating }) {
   const inputRef = useRef(null);
 
   const handleUploadClick = () => {
@@ -9,7 +9,7 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
 
   const handleFileChange = (event) => {
     const file = event.target.files?.[0];
-    onFileSelected(file?.name || '');
+    if (file) onFileSelected(file);
   };
 
   return (
@@ -23,28 +23,30 @@ function OnboardingScreen({ fileName, onFileSelected, onGenerateFromMaterial }) 
         type="file"
         className="hidden"
         onChange={handleFileChange}
-        accept=".pdf,.txt,.doc,.docx,.ppt,.pptx"
+        accept=".pdf,.txt,.doc,.docx"
       />
 
       <button
         type="button"
         onClick={handleUploadClick}
-        className="w-full max-w-md rounded-2xl border-2 border-dashed border-[var(--accent)] px-8 py-4 text-lg font-semibold text-[var(--accent)] transition hover:bg-blue-950"
+        disabled={isGenerating}
+        className="w-full max-w-md rounded-2xl border-2 border-dashed border-[var(--accent)] px-8 py-4 text-lg font-semibold text-[var(--accent)] transition hover:bg-blue-950 disabled:opacity-50"
       >
         Upload Study Material
         <p className="rounded-xl bg-gray-800 px-4 py-2 text-sm text-[var(--text-soft)]">
-          {fileName || ''}
+          {fileName || 'No file selected'}
         </p>
       </button>
 
-        <button
-          type="button"
-          onClick={onGenerateFromMaterial}
-          className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-4 text-xl font-semibold text-white transition hover:bg-[var(--accent-strong)]"
-        >
-          Generate Concepts
-        </button>
-      </div>
+      <button
+        type="button"
+        onClick={onGenerateFromMaterial}
+        disabled={!fileName || isGenerating}
+        className="w-full max-w-md rounded-2xl bg-[var(--accent)] px-8 py-4 text-xl font-semibold text-white transition hover:bg-[var(--accent-strong)] disabled:cursor-not-allowed disabled:opacity-50"
+      >
+        {isGenerating ? 'Extracting Concepts…' : 'Generate Concepts'}
+      </button>
+    </div>
   );
 }
 

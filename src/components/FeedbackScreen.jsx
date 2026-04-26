@@ -1,5 +1,56 @@
-function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConceptIndex, onSelectConcept, onBackToList }) {
+function FeedbackScreen({ concept, transcript, aiFeedback, isAnalyzing, onAgain, concepts, currentConceptIndex, onSelectConcept, onBackToList }) {
   const otherConcepts = concepts.filter((_, index) => index !== currentConceptIndex);
+
+  const renderFeedback = () => {
+    if (isAnalyzing) {
+      return (
+        <div className="flex items-center gap-3 rounded-xl border border-gray-600 bg-[#2a2a2a] p-4">
+          <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-[var(--accent)] border-t-transparent" />
+          <span className="text-sm text-[var(--text-soft)]">Analysing your explanation…</span>
+        </div>
+      );
+    }
+
+    if (!aiFeedback) return null;
+
+    const { correctPoints = [], missingPoints = [], summary = '' } = aiFeedback;
+
+    return (
+      <div className="space-y-3">
+        {correctPoints.length > 0 && (
+          <div className="rounded-xl border border-green-800 bg-green-950/40 p-3">
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-green-400">What you got right</p>
+            <ul className="space-y-1">
+              {correctPoints.map((point, i) => (
+                <li key={i} className="flex gap-2 text-sm text-[var(--text-main)]">
+                  <span className="mt-0.5 shrink-0 text-green-400">✓</span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {missingPoints.length > 0 && (
+          <div className="rounded-xl border border-yellow-800 bg-yellow-950/40 p-3">
+            <p className="mb-1.5 text-xs font-bold uppercase tracking-widest text-yellow-400">What to add next time</p>
+            <ul className="space-y-1">
+              {missingPoints.map((point, i) => (
+                <li key={i} className="flex gap-2 text-sm text-[var(--text-main)]">
+                  <span className="mt-0.5 shrink-0 text-yellow-400">→</span>
+                  {point}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {summary && (
+          <p className="text-sm leading-relaxed text-[var(--text-soft)]">{summary}</p>
+        )}
+      </div>
+    );
+  };
 
   return (
     <div className="grid gap-5 text-left md:grid-cols-[2fr_1fr]">
@@ -11,17 +62,15 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
 
           <h2 className="text-3xl font-bold">{concept.name}</h2>
 
-          <p className="rounded-xl border border-gray-600 bg-[#2a2a2a] p-4 text-sm text-[var(--text-soft)]">
-            Transcript: {transcript}
-          </p>
+          {transcript ? (
+            <p className="rounded-xl border border-gray-600 bg-[#2a2a2a] p-4 text-sm text-[var(--text-soft)]">
+              <span className="font-semibold text-white">Your explanation: </span>{transcript}
+            </p>
+          ) : null}
 
-          <p className="text-lg leading-relaxed text-[var(--text-main)]">
-            You got A, B, C correct. 
-            However, the concept also includes X and Y.
-          </p>
+          {renderFeedback()}
         </div>
 
-        {/* left */}
         <div className="mt-6 grid gap-3 sm:grid-cols-2">
           <button
             type="button"
@@ -54,7 +103,7 @@ function FeedbackScreen({ concept, transcript, onAgain, concepts, currentConcept
                   key={`${otherConcept.name}-${idx}`}
                   type="button"
                   onClick={() => onSelectConcept(actualIndex)}
-                  className=" rounded-lg border border-transparent bg-transparent px-3 py-2 text-left text-base font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[#2a2a2a]"
+                  className="rounded-lg border border-transparent bg-transparent px-3 py-2 text-left text-base font-semibold text-[var(--accent)] transition hover:border-[var(--accent)] hover:bg-[#2a2a2a]"
                 >
                   {otherConcept.name}
                 </button>

@@ -1,0 +1,24 @@
+Introduction to Cell Biology
+
+Cells are the basic structural and functional units of all living organisms. Every living thing is made of one or more cells, and all cells arise from pre-existing cells. This principle is known as Cell Theory.
+
+Prokaryotic vs Eukaryotic Cells
+Prokaryotic cells, such as bacteria, lack a membrane-bound nucleus. Their DNA floats freely in the cytoplasm in a region called the nucleoid. Eukaryotic cells, found in plants, animals, and fungi, contain a true nucleus enclosed by a nuclear envelope, along with membrane-bound organelles.
+
+The Cell Membrane
+The cell membrane (plasma membrane) is a phospholipid bilayer that surrounds every cell. It controls what enters and exits the cell, acting as a selective barrier. Proteins embedded in the membrane help transport molecules and receive signals from the environment. This model of membrane structure is called the Fluid Mosaic Model.
+
+Mitochondria and ATP Production
+Mitochondria are organelles responsible for producing ATP (adenosine triphosphate), the cell's main energy currency. Through a process called cellular respiration, glucose and oxygen are converted into ATP, carbon dioxide, and water. Mitochondria have their own DNA and are thought to have originated from ancient bacteria — a concept called endosymbiotic theory.
+
+The Nucleus and DNA
+The nucleus contains the cell's genetic material in the form of DNA. DNA is organized into chromosomes, and segments of DNA that code for proteins are called genes. Before a cell divides, DNA is copied in a process called DNA replication, ensuring each daughter cell receives a complete set of genetic instructions.
+
+Mitosis
+Mitosis is the process of cell division that produces two genetically identical daughter cells from one parent cell. It consists of four phases: prophase, metaphase, anaphase, and telophase. Mitosis is used for growth, repair, and asexual reproduction. It is distinct from meiosis, which produces sex cells with half the normal chromosome number.
+
+Protein Synthesis
+Proteins are made in a two-step process: transcription and translation. During transcription, a section of DNA is copied into messenger RNA (mRNA) inside the nucleus. The mRNA travels to a ribosome, where translation occurs: transfer RNA (tRNA) molecules bring amino acids that are assembled into a protein chain according to the mRNA sequence.
+
+Osmosis and Diffusion
+Diffusion is the movement of molecules from an area of high concentration to low concentration. Osmosis is the diffusion of water specifically across a semipermeable membrane. When a cell is placed in a hypotonic solution (lower solute concentration), water moves into the cell and it swells. In a hypertonic solution (higher solute concentration), water moves out and the cell shrinks.
